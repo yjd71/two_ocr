@@ -1,0 +1,7 @@
+.idea
+settings_dev.yaml
+settings_test.yaml
+tmp
+main
+logs/*
+uploads/*
