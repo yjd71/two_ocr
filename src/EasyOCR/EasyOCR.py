@@ -3,6 +3,7 @@ import os
 import cv2
 import numpy as np
 import matplotlib
+
 # 使用 PyQt5 后端来支持交互式绘图
 matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
@@ -45,7 +46,8 @@ def preprocess_img_pro(image):
 # 使用EasyOCR识别
 def ocr_recognition(image):
     reader = easyocr.Reader(['en'], gpu=True,
-                            model_storage_directory='../../easyocr/model')  # 初始化 ocr 引擎， 设置语言为英文和中文, model_storage_directory：自定义模型存储路径
+                            # model_storage_directory='../../easyocr/model',
+                            )  # 初始化 ocr 引擎， 设置语言为英文和中文, model_storage_directory：自定义模型存储路径
     result = reader.readtext(image,  # image：支持文件路径、URL、字节数据或Opencv格式图像
                              detail=1,  # detail: 是否返回位置信息（默认1返回全部信息）
                              paragraph=False,  # paragraph:是否合并为段落(默认False）
@@ -71,7 +73,6 @@ def show_images(original, opening):
 
     plt.tight_layout()
     plt.show()
-
 
 
 if __name__ == '__main__':
