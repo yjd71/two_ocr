@@ -1,3 +1,5 @@
+import os
+
 import cv2
 import numpy as np
 import matplotlib
@@ -83,10 +85,22 @@ if __name__ == '__main__':
     ocr_result = ocr_recognition(preprocessed_image)
 
     # 输出OCR结果
-    for detection in ocr_result:
-        # print(f"位置坐标: {detection[0]}")
-        print(f"识别文本： {detection[1]}")
-        # print(f"置信度： {detection[2]:.2f}\n")
+    # 确保输出文件夹存在
+    output_folder = "output"
+    os.makedirs(output_folder, exist_ok=True)
+
+    # 输出结果文件完整路径
+    output_file_path = os.path.join(output_folder, "easyocr_results.txt")
+
+    # 输出OCR结果到文件
+    with open(output_file_path, 'w', encoding='utf-8') as output_file:
+        for detection in ocr_result:
+            # 识别文本
+            text = detection[1]
+            # 向文件写入识别文本
+            output_file.write(f"识别文本： {text}\n")
+            # 如果需要，可以同时打印在控制台
+            print(f"识别文本： {text}")
 
     # 显示处理过程中的每个阶段的图片
     show_images(original_image, preprocessed_image)
