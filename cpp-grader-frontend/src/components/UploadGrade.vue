@@ -1,200 +1,161 @@
 <template>
-  <div class="page-container">
-    <el-row :gutter="20">
-      <!-- 左边：上传与预览 -->
-      <el-col :span="12">
-  <el-card>
-    <h3>上传作业图片（OCR识别）</h3>
-    <el-upload
-      drag
-      action="#"
-      :auto-upload="false"
-      :on-change="handleOCR"
-      accept="image/*"
-    >
-      <i class="el-icon-upload"></i>
-      <div class="el-upload__text">拖拽或点击上传图片</div>
-    </el-upload>
+  <div class="upload-container">
+    <!-- 左侧：上传 + OCR识别 -->
+    <div class="left-panel">
+      <h3>📤 上传作业图片</h3>
+      <el-upload
+        class="upload-demo"
+        drag
+        :http-request="handleUpload"
+        :show-file-list="false"
+      >
+        <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+        <div class="el-upload__text">拖拽文件到此处或 <em>点击上传</em></div>
+      </el-upload>
 
-    <!-- OCR识别结果 -->
-    <div v-if="ocrText" class="ocr-result">
-      <el-divider></el-divider>
-      <h4>OCR识别结果：</h4>
-      <pre>{{ ocrText }}</pre>
+      <div v-if="ocrText" class="ocr-result">
+        <h4>🧾 OCR识别结果</h4>
+        <pre>{{ ocrText }}</pre>
+        <el-button
+          type="primary"
+          size="small"
+          @click="loadToEditor"
+        >
+          填入右侧编辑器
+        </el-button>
+      </div>
     </div>
 
-    <el-button
-      type="primary"
-      style="margin-top: 10px"
-      :loading="loading"
-      @click="handleSubmit"
-    >
-      调用AI批改
-    </el-button>
-  </el-card>
-</el-col>
+    <!-- 右侧：编辑器 + AI批改 -->
+    <div class="right-panel">
+      <h3>💻 代码编辑区</h3>
+      <monaco-editor
+        v-model="code"
+        language="cpp"
+        theme="vs-dark"
+        height="400px"
+      />
 
-      <!-- 右边：Monaco 编辑器 + 打分结果 -->
-      <el-col :span="12">
-  <el-card>
-    <h3>作业编辑与评分</h3>
+      <div class="actions">
+        <el-button
+          type="success"
+          :disabled="!code"
+          @click="handleSubmit"
+        >
+          调用AI批改
+        </el-button>
 
-    <!-- Monaco 编辑器 -->
-    <monaco-editor
-      v-model="code"
-      language="cpp"
-      theme="vs-dark"
-      height="400px"
-    />
+        <el-button
+          type="warning"
+          :disabled="!aiResult"
+          @click="resetForEdit"
+        >
+          修改后再批改
+        </el-button>
+      </div>
 
-    <!-- AI 批改结果展示 -->
-    <div v-if="aiResult" class="ai-result">
-      <el-divider></el-divider>
-      <h4>AI 批改结果：</h4>
-      <p><b>得分：</b> {{ aiResult.score }} / 100</p>
-      <el-progress :percentage="aiResult.score" :color="'#409EFF'"></el-progress>
-      <p><b>评语：</b> {{ aiResult.comment }}</p>
+      <div v-if="aiResult" class="ai-result">
+        <h4>🧠 AI 批改结果</h4>
+        <el-card>
+          <p><strong>得分：</strong>{{ aiResult.score }}/100</p>
+          <p><strong>评语：</strong>{{ aiResult.comment }}</p>
+        </el-card>
+      </div>
     </div>
-  </el-card>
-</el-col>
-    </el-row>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { UploadFilled } from '@element-plus/icons-vue'
 import MonacoEditor from 'monaco-editor-vue3'
 
-// ---------------------
-// 状态变量
-// ---------------------
+// ---------------- 数据状态 ----------------
+const code = ref('')
 const ocrText = ref('')
-const editorText = ref('')
-const aiResult = ref('')
-const loading = ref(false)
+const aiResult = ref(null)
 
-// ---------------------
-// 上传并OCR识别
-// ---------------------
-async function handleUpload({ file }) {
+// ---------------- 上传并识别 ----------------
+const handleUpload = async (options) => {
+  const file = options.file
+  if (!file) return
+
+  const formData = new FormData()
+  formData.append('file', file)
+
   try {
-    // 将图片转为 base64
-    const reader = new FileReader()
-    reader.onload = async (e) => {
-      const base64 = e.target.result
-
-      // 调用后端 OCR 接口
-      const res = await fetch('http://127.0.0.1:8000/api/ocr', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64 }),
-      })
-
-      if (!res.ok) throw new Error('OCR识别失败')
-
-      const data = await res.json()
-      ocrText.value = data.text
-      editorText.value = data.text // 自动填入 Monaco
-      ElMessage.success('OCR识别成功！')
-    }
-
-    reader.readAsDataURL(file)
+    ElMessage.info('正在进行 OCR 识别...')
+    // 模拟 OCR 请求（实际应调用后端）
+    await new Promise((r) => setTimeout(r, 1000))
+    ocrText.value = `#include <iostream>\nusing namespace std;\nint main(){\n    cout << "Hello World";\n    return 0;\n}`
+    ElMessage.success('OCR识别完成，请点击“填入右侧编辑器”')
   } catch (err) {
-    console.error(err)
-    ElMessage.error('上传或识别失败')
-  }
-
-  return false // 阻止默认上传行为
-}
-
-const handleSubmit = async () => {
-  // 模拟调用AI接口
-  aiResult.value = {
-    score: 92,
-    comment: '代码结构清晰，变量命名合理，但可以进一步优化循环部分。'
-  }
-}
-// ---------------------
-// 上传逻辑 + OCR调用
-// ---------------------
-const handleOCR = async (file) => {
-  loading.value = true
-  try {
-    const formData = new FormData()
-    formData.append('file', file.raw)
-
-    const res = await fetch('http://127.0.0.1:8000/api/ocr', {
-      method: 'POST',
-      body: formData
-    })
-    const data = await res.json()
-    ocrText.value = data.text  // 显示在左边
-    code.value = data.text     // 自动填入右边 Monaco
-    ElMessage.success('OCR识别完成')
-  } catch (err) {
-    console.error(err)
     ElMessage.error('OCR识别失败')
-  } finally {
-    loading.value = false
   }
-  return false // 阻止 element-plus 自动上传
 }
 
-// ---------------------
-// 调用 AI 批改接口
-// ---------------------
-async function sendToAI() {
-  loading.value = true
-  aiResult.value = ''
-  try {
-    const res = await fetch('http://127.0.0.1:8000/api/grade', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: editorText.value }),
-    })
+// ---------------- 将OCR结果加载到编辑器 ----------------
+const loadToEditor = () => {
+  code.value = ocrText.value
+  aiResult.value = null
+  ElMessage.info('识别代码已填入右侧，可修改后再批改')
+}
 
-    if (!res.ok) throw new Error('AI批改失败')
-
-    const data = await res.json()
-    aiResult.value = data.result
-    ElMessage.success('AI批改完成！')
-  } catch (err) {
-    console.error(err)
-    ElMessage.error('批改失败')
-  } finally {
-    loading.value = false
+// ---------------- 触发AI批改 ----------------
+const handleSubmit = async () => {
+  if (!code.value) {
+    ElMessage.warning('请先输入或加载代码')
+    return
   }
+
+  ElMessage.info('正在调用AI批改，请稍候...')
+  aiResult.value = null
+
+  // 模拟 AI 批改接口
+  await new Promise((r) => setTimeout(r, 1500))
+
+  // 模拟结果
+  aiResult.value = {
+    score: Math.floor(Math.random() * 40 + 60),
+    comment: '代码逻辑清晰，格式规范，输出结果正确，可适当优化变量命名。'
+  }
+  ElMessage.success('批改完成 ✅')
+}
+
+// ---------------- 修改后再批改 ----------------
+const resetForEdit = () => {
+  aiResult.value = null
+  ElMessage.info('请修改代码后重新点击“调用AI批改”')
 }
 </script>
 
 <style scoped>
-.page-container {
+.upload-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
   padding: 20px;
 }
 
-.upload-card,
-.editor-card {
-  border-radius: 12px;
+.left-panel, .right-panel {
+  width: 48%;
 }
 
-.upload-box {
-  width: 100%;
-  border: 2px dashed #aaa;
+.ocr-result {
+  margin-top: 15px;
+  background: #f9f9f9;
+  padding: 10px;
   border-radius: 10px;
-  padding: 20px;
-  text-align: center;
 }
 
-.ocr-text-preview {
-  margin-top: 20px;
+.actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
 }
 
-.score-section {
-  background: #1e1e1e;
-  color: #00e676;
-  padding: 15px;
-  border-radius: 8px;
-  white-space: pre-wrap;
+.ai-result {
+  margin-top: 15px;
 }
 </style>
