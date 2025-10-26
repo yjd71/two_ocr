@@ -3,5 +3,7 @@ settings_dev.yaml
 settings_test.yaml
 tmp
 main
+easyocr
+paddleocr
 logs/*
 uploads/*
