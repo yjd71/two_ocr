@@ -1,5 +1,6 @@
 from fastapi import FastAPI
-from api.ocr_api.ocr import router as ocr_router
+from two_ocr.api.ocr_api.ocr import router as ocr_router
+from two_ocr.api.AI_api.ai_api import router as ai_router
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -22,6 +23,6 @@ def router():
 
     # 包含路由模块
     app.include_router(ocr_router)
-
+    app.include_router(ai_router)
     return app
 
