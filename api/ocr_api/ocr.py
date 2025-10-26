@@ -33,6 +33,7 @@ async def ocr_api(assignmentId: str):
         if not assignmentId or not isinstance(assignmentId, str):
             return validation_error_response(message="作业ID无效")
 
+
         # 查询数据库获取作业图片
         image_data = get_assignment_image(assignmentId)
         image = '../../Data/zhangqikui/test1/IMG_20250928_222538.jpg'
@@ -60,6 +61,7 @@ async def ocr_api(assignmentId: str):
         print("\n=== 后处理后 ===")
         print(corrected)
         """ ocr识别结果的源代码字符串后处理后入库 （根据uri传递的请求参数 作业ID 查询数据库，如果该作业存在，则更新作业，否则创建新作业）"""
+
 
         """ 响应, OCR 识别到的源代码文本 """
         # 返回成功响应
