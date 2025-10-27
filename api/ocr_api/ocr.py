@@ -1,15 +1,13 @@
 from src.PaddleOCR import ocr_v2
-from fastapi import FastAPI, HTTPException,APIRouter
+from fastapi import FastAPI, HTTPException, APIRouter
 from common.res.response import success_response, validation_error_response, service_error_response, ApiResponse
 
 # 创建路由实例，添加API前缀和标签
 router = APIRouter()
 
+
+# 查询数据库获取作业图片
 def get_assignment_image(assignmentId):
-    pass
-
-
-def process_ocr_image(image_data):
     pass
 
 
@@ -27,7 +25,6 @@ async def ocr_api(assignmentId: str):
     # print("ocr_api运行成功:",assignmentId)
     # return success_response(data={"recognizedCode":assignmentId})
 
-
     try:
         # 参数校验：确保assignmentId有效
         if not assignmentId or not isinstance(assignmentId, str):
@@ -42,6 +39,9 @@ async def ocr_api(assignmentId: str):
         """ ocr识别 """
         # 使用PaddleOCR识别 的结果
         results = ocr_v2.paddle_ocr(image)
+        # for res in result:
+        #     res.save_to_img("output")
+
         if results is None:
             return service_error_response(message="OCR处理失败")
 
@@ -69,7 +69,3 @@ async def ocr_api(assignmentId: str):
         return validation_error_response(message=str(e))
     except Exception as e:
         return service_error_response(message="服务器内部错误")
-
-
-if __name__ == '__main__':
-    ocr_api()

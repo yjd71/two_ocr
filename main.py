@@ -3,9 +3,6 @@ from router import enter as router
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 
-
-
-
 # 启动服务（可通过uvicorn运行）
 if __name__ == "__main__":
     # 创建FastAPI应用实例
