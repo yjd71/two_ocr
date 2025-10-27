@@ -37,20 +37,19 @@
 - **方法 / 路径**：`POST /api/assignments`  
 - **用途**：上传作业文件（支持图片或源码文件），服务端存储并返回 `assignmentId` 供后续处理使用。
 
-### 请求 JSON 字段
-| 字段 | 类型 | 必填 | 说明 |
-|---|---:|:---:|---|
-| `fileName` | `string` | 是 | 文件名（含后缀），例如 `"homework1.jpg"` 或 `"solution.cpp"`。 |
-| `fileContent` | `string` | 是 | 文件内容的 Base64 编码字符串。若文件过大建议使用文件 URL（扩展）。 |
+### 请求 form-data 上传 字段
+| 字段 |       类型 | 必填 | 说明                                                |
+|---|---------:|:---:|---------------------------------------------------|
+| `file` |   `file` | 是 | 上传文件,文件包含文件内容、文件名、MIME 类型等                        |
 
 ### 响应 JSON 字段（HTTP 200）
-| 字段 | 类型 | 说明 |
-|---|---:|---|
-| `code` | `int` | 业务状态码（见全局约定）。 |
-| `message` | `string` | 状态描述（由 code 对应）。 |
-| `data` | `object` 或 `null` | 成功时包含： |
-| `data.assignmentId` | `string` | 系统生成的唯一作业 ID。 |
-| `data.fileName` | `string` | 回显上传的文件名。 |
+| 字段 | 类型 | 说明                       |
+|---|---:|--------------------------|
+| `code` | `int` | 业务状态码（见全局约定）。            |
+| `message` | `string` | 状态描述（由 code 对应）。         |
+| `data` | `object` 或 `null` | 成功时包含：                   |
+| `data.assignmentId` | `string` | 系统生成的唯一作业 ID。            |
+| `data.fileName` | `string` | 通过file.filename获取上传的文件名。 |
 
 ### 成功示例
 ```json
