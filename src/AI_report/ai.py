@@ -41,17 +41,24 @@ class KimiCppScorer:
 {requirements}
 
 评分标准和权重分配:
-- 代码正确性 (满分为60分): 代码是否能正确编译运行，是否实现要求的功能
-- 代码规范性 (满分为20分): 代码格式是否规范，命名是否清晰，注释是否恰当
-- 代码效率 (满分为10分): 代码的时间复杂度和空间复杂度是否合理
-- 代码可读性 (满分为10分): 代码结构是否清晰，是否易于理解
+- 代码总分(满分为100分): 总分一定一定要等于各维度分数之和。
+- 代码正确性 (满分为60分): 即使代码不完整或有错误，只要显示出正确的编程思路，就应给予部分分数,尽量给高分
+- 代码规范性 (满分为20分): 识别代码的格式和结构，只要有一定的规范性就应给予分数，尽量给高分
+- 代码效率 (满分为10分): 对识别出的代码结构进行基本评估，尽量给高分
+- 代码可读性 (满分为10分): 评估代码的整体可读性，尽量给高分
 
-评分计算规则:
-1. 请先为每个维度单独评分
-2. 然后按照以下公式计算加权总分:
-   总分 = 正确性得分 + 规范性得分 + 效率得分 + 可读性得分
-3. 总分必须是各维度得分的加权和，不能超过100分
-4. 如果代码完全没有错误且完美实现要求的功能，请给予100分满分
+
+重要评分原则:
+1. 对于识别质量较差的代码，不要直接给0分，应根据代码中存在的有效部分给予部分分数，尽量给高分
+2. 如果代码显示出正确的编程思路，即使实现不完整，也应在正确性维度给予基础分(30-50分)，尽量给高分
+3. 识别出的代码片段只要包含栈的基本操作思路(push/pop等)，就应肯定其部分正确性，尽量给高分
+4. 评分时应考虑代码可能是由OCR或识别工具生成，可能存在识别错误，尽量给高分
+
+特殊情况处理:
+- 如果代码完全不相关或无法识别任何栈相关操作，正确性可给0分，尽量给高分
+- 如果代码显示出栈的基本概念但实现有误，正确性应给予20-40分，尽量给高分
+- 如果代码基本正确但有少量错误，正确性应给予50-60分，尽量给高分
+- 只有完全无法识别或完全无关的代码才给0分，尽量给高分
 
 请以JSON格式返回评分结果，包含以下字段:
 - score: 总分(0-100)，总分必须等于各维度得分的加和。
@@ -173,7 +180,7 @@ def ai(perfect_code):
 
 
 
-    requirements = "实现栈的几种基本功能，包括push(入栈)、pop(出栈)、top(获取栈顶元素)、isEmpty(判断栈是否为空)、isFull(判断栈是否已满)。"
+    requirements = "实现栈的几种基本功能，包括push(入栈)、pop(出栈)、top(获取栈顶元素)。"
 
     print("正在对C++代码进行评分...")
     result = scorer.score_cpp_code(perfect_code, requirements)
@@ -186,78 +193,51 @@ if __name__ == "__main__":
     perfect_code = """
 
     #include <iostream>
-    #include <vector>
-    using namespace std;
+using namespace std;
+Class Stack{
+private;
+intt elements;
+int top;
+int maxSize;
+public;
+Stack(int size=s){
+maxSize =size;
+elements = new intimaxsizel;
+top=-i;
+3
+~Stack(){
+deleteilelements;}
+void push cint element}{
+if (top<maxSize -i)
+elements [++top]=element;
+cout<<“元素<<eleme<<t《入成”ccendl；}
+else  cout<<“栈满，无法入栈<<endc；}
+int pop()
+if(top>=o){
+int element;elements Itop--};
+cout<<“元素<<eleme<<t《s“出成功”cendl；;
+else cout<<”，无法出栈"aendl；
+retun i;
 
-    template<typename T>
-    class AdvancedStack {
-    private:
-        vector<T> elements;
-        int maxSize;
+int getsize()
+int size=t0p+i;
+cout<<“中当前有<<siz<<“元<<”《cendl；;
+Veturn size;
+int get emptylots()
+int empty=maxSize-(t0p+i);
+Gout<s中还剩”<<empt<<“个位”ccendl；
+Yeturn empey;
 
-    public:
-        AdvancedStack(int size = 100) : maxSize(size) {}
-
-        void push(T value) {
-            if (elements.size() >= maxSize) {
-                throw runtime_error("Stack overflow!");
-            }
-            elements.push_back(value);
-        }
-
-        T pop() {
-            if (elements.empty()) {
-                throw runtime_error("Stack underflow!");
-            }
-            T value = elements.back();
-            elements.pop_back();
-            return value;
-        }
-
-        T peek() {
-            if (elements.empty()) {
-                throw runtime_error("Stack is empty!");
-            }
-            return elements.back();
-        }
-
-        bool isEmpty() {
-            return elements.empty();
-        }
-
-        bool isFull() {
-            return elements.size() >= maxSize;
-        }
-
-        // 问题：使用vector而不是数组，但maxSize限制可能不准确
-        // vector会自动扩容，这与栈的固定大小概念不符
-
-        void display() {
-            cout << "Stack contents: ";
-            for (auto it = elements.rbegin(); it != elements.rend(); ++it) {
-                cout << *it << " ";
-            }
-            cout << endl;
-        }
-    };
-
-    int main() {
-        try {
-            AdvancedStack<int> stack(3);
-
-            stack.push(1);
-            stack.push(2);
-            stack.push(3);
-            stack.display();
-
-            stack.push(4); // 这里会抛出异常
-        }
-        catch (const exception& e) {
-            cout << "Exception: " << e.what() << endl;
-        }
-
-        return 0;
-    }
+int main()
+Stack stack;
+stack pushcv;
+stack,push(z);
+stack.popl;
+Stack.getsize();
+L;
+Stack.get&emptyslots()i;
+Yeturn Di;
+1
         """
     result = ai(perfect_code)
 
