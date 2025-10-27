@@ -48,17 +48,17 @@ async def ocr_api(file: Optional[UploadFile] = File(None)):
         if not fileName or not fileName.strip():
             raise validation_error_response("文件名不能为空或仅包含空格")
 
-        # 生成唯一的assignmentId
-        assignment_id = str(uuid.uuid4())
+        # 生成唯一的assignment_path_id
+        assignment_path_id = str(uuid.uuid4())
 
         # 提取文件扩展名（如 '.jpg' 或 '.cpp'）
         ext = Path(fileName).suffix
 
-        # 使用assignment_id + 扩展名作为存储文件名，避免冲突
-        safe_name = f"{assignment_id}{ext}"
+        # 使用assignment_path_id + 扩展名作为存储文件名，避免冲突
+        safe_name = f"{assignment_path_id}{ext}"
 
-        # 定义上传目录
-        upload_dir = Path("C:/IT/AI/OCR/two_ocr/uploads")
+        # 定义初始图片上传目录
+        upload_dir = Path("C:/IT/AI/OCR/two_ocr/uploads/original_image  ")
         upload_dir.mkdir(exist_ok=True)
 
         # 构建文件保存路径
@@ -71,6 +71,9 @@ async def ocr_api(file: Optional[UploadFile] = File(None)):
             content = await file.read()
             # 写入到本地文件
             await out_file.write(content)
+
+        """ file_path根据查询数据库（where file_path == original_image_path），找到上传图片的id """
+        assignment_id = 1
 
         # 准备响应数据，回显从file.filename获取的fileName
         data = {
