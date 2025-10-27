@@ -1,8 +1,8 @@
 from router import enter as router
 import uvicorn
 
-from core.core_db import init_db
 
+from core.core_db import init_db
 
 
 # 启动服务（可通过uvicorn运行）
