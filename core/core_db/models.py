@@ -2,7 +2,7 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Numeric, JSON
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from database import Base
+from core.core_db.database import Base
 
 
 class User(Base):

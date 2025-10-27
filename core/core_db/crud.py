@@ -2,8 +2,8 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 import bcrypt
 
-from models import User, Assignment, Task, Score, ImageProcess
-from schemas import (
+from core.core_db.models import User, Assignment, Task, Score, ImageProcess
+from core.core_db.schemas import (
     UserCreate, UserUpdate, AssignmentCreate, AssignmentUpdate,
     TaskCreate, TaskUpdate, ScoreCreate, ImageProcessCreate
 )

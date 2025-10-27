@@ -1,6 +1,6 @@
 # init_database.py
-from database import engine, SessionLocal
-from models import Base, User, Assignment, Task, Score, ImageProcess
+from core.core_db.database import engine, SessionLocal
+from core.core_db.models import Base, User, Assignment, Task, Score, ImageProcess
 import bcrypt
 
 
@@ -100,7 +100,7 @@ def create_sample_data():
 
 def main():
     init_database()
-    create_sample_data()
+    # create_sample_data()
 
 if __name__ == "__main__":
     init_database()

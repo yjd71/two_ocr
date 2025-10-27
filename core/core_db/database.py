@@ -15,7 +15,7 @@ DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NA
 
 # 测试数据库配置（可以使用不同的数据库或添加_test后缀）
 TEST_DB_NAME = os.getenv('TEST_DB_NAME', f"{DB_NAME}_test")
-TEST_DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{TEST_DB_NAME}"
+TEST_DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 # 创建数据库引擎
 engine = create_engine(DATABASE_URL)
