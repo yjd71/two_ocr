@@ -1,6 +1,10 @@
 from fastapi import FastAPI
+
+from api.AI_api.ai_api import router as ai_router
+
 from api.ocr_api.ocr import router as ocr_router
 from api.upload_img.upload_api import router as upload_router
+
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -23,6 +27,7 @@ def router():
 
     # 包含路由模块
     app.include_router(ocr_router)
+    app.include_router(ai_router)
     app.include_router(upload_router)
 
     return app
