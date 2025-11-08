@@ -85,6 +85,7 @@ class TaskResponse(TaskBase):
 
 class ScoreBase(BaseModel):
     assignment_id: int
+    scored_at: datetime
 
 
 class ScoreCreate(ScoreBase):
@@ -118,16 +119,18 @@ class ScoreResponse(ScoreBase):
 class ImageProcessBase(BaseModel):
     assignment_id: int
     process_step: str
-
+    processed_at: Optional[datetime] = None
 
 class ImageProcessCreate(ImageProcessBase):
     process_result: Optional[Dict[str, Any]] = None
     confidence_score: Optional[float] = None
 
 
+
 class ImageProcessUpdate(BaseModel):
     process_result: Optional[Dict[str, Any]] = None
     confidence_score: Optional[float] = None
+    processed_at: Optional[datetime] = None
 
 
 class ImageProcessResponse(ImageProcessBase):

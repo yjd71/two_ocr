@@ -1,7 +1,9 @@
 import logging
 
+import aiofiles
 import cv2
 import numpy as np
+from PIL import Image
 from paddleocr import PaddleOCR
 import sys
 import os
@@ -58,9 +60,9 @@ def ocr_recognition(image):
     ocr = PaddleOCR(
         text_detection_model_name="PP-OCRv5_server_det",
         text_recognition_model_name="PP-OCRv5_server_rec",
-        use_doc_orientation_classify=True,  # 通过 use_doc_orientation_classify 参数指定不使用文档方向分类模型
-        use_doc_unwarping=True,  # 通过 use_doc_unwarping 参数指定不使用文本图像矫正模型
-        use_textline_orientation=True,  # 通过 use_textline_orientation 参数指定不使用文本行方向分类模型
+        use_doc_orientation_classify=False,  # 通过 use_doc_orientation_classify 参数指定不使用文档方向分类模型
+        use_doc_unwarping=False,  # 通过 use_doc_unwarping 参数指定不使用文本图像矫正模型
+        use_textline_orientation=False,  # 通过 use_textline_orientation 参数指定不使用文本行方向分类模型
         lang="en",  # 通过 lang 参数来使用英文模型
         # device="gpu",  # 通过 device 参数使得在模型推理时使用 GPU
         # text_detection_model_dir="../../paddleocr/_pipelines"# 通过 text_detection_model_dir 指定本地模型路径
@@ -82,11 +84,15 @@ def ocr_recognition(image):
 
 
 # ocr调用函数
-def paddle_ocr(image):
+def paddle_ocr(image, preprocessed_image_save_path=None):
     # 加载图片
     original_image = load_img(image)
     # 图片预处理
     preprocessed_image = preprocess_img_pro(original_image)
+
+    # 构建文件保存
+    preprocessed_image_save = Image.fromarray(preprocessed_image)  # 转换为 PIL 图像
+    preprocessed_image_save.save(preprocessed_image_save_path)
 
     # 使用PaddleOCR识别
     result = ocr_recognition(preprocessed_image)
