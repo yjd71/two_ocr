@@ -5,7 +5,7 @@ import bcrypt
 from core.core_db.models import User, Assignment, Task, Score, ImageProcess
 from core.core_db.schemas import (
     UserCreate, UserUpdate, AssignmentCreate, AssignmentUpdate,
-    TaskCreate, TaskUpdate, ScoreCreate, ImageProcessCreate
+    TaskCreate, TaskUpdate, ScoreCreate, ImageProcessCreate, ImageProcessUpdate
 )
 
 
@@ -61,6 +61,10 @@ class AssignmentCRUD:
     @staticmethod
     def get_assignment(db: Session, assignment_id: int) -> Optional[Assignment]:
         return db.query(Assignment).filter(Assignment.id == assignment_id).first()
+
+    @staticmethod
+    def get_assignment_by_file_path(db: Session, file_path: str) -> Optional[Assignment]:
+        return db.query(Assignment).filter(Assignment.original_image_path == file_path).first()
 
     @staticmethod
     def get_assignments_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100) -> List[Assignment]:
@@ -123,7 +127,169 @@ class TaskCRUD:
         return db_task
 
 
+class ImageProcessCRUD:
+    @staticmethod
+    def get_image_process(db: Session, process_id: int) -> Optional[ImageProcess]:
+        """根据ID获取图像处理记录"""
+        return db.query(ImageProcess).filter(ImageProcess.id == process_id).first()
+
+    @staticmethod
+    def get_image_process_by_assignment_id(db: Session, assignment_id: int) -> Optional[ImageProcess]:
+        """根据ID获取图像处理记录"""
+        return db.query(ImageProcess).filter(ImageProcess.assignment_id == assignment_id).first()
+    @staticmethod
+    def get_image_processes_by_task(db: Session, task_id: int, skip: int = 0, limit: int = 100) -> List[ImageProcess]:
+        """根据任务ID获取所有相关的图像处理记录"""
+        return db.query(ImageProcess).filter(ImageProcess.task_id == task_id).offset(skip).limit(limit).all()
+
+    @staticmethod
+    def get_image_processes_by_assignment(db: Session, assignment_id: int, skip: int = 0, limit: int = 100) -> List[
+        ImageProcess]:
+        """根据作业ID获取所有相关的图像处理记录"""
+        return db.query(ImageProcess).filter(ImageProcess.assignment_id == assignment_id).offset(skip).limit(
+            limit).all()
+
+    @staticmethod
+    def create_image_process(db: Session, image_process: ImageProcessCreate) -> ImageProcess:
+        """创建新的图像处理记录"""
+        db_image_process = ImageProcess(**image_process.dict())
+        db.add(db_image_process)
+        db.commit()
+        db.refresh(db_image_process)
+        return db_image_process
+
+    @staticmethod
+    def update_image_process(db: Session, process_id: int, image_process_update: ImageProcessUpdate) -> Optional[
+        ImageProcess]:
+        """更新图像处理记录"""
+        db_image_process = db.query(ImageProcess).filter(ImageProcess.id == process_id).first()
+        if db_image_process:
+            update_data = image_process_update.dict(exclude_unset=True)
+            for field, value in update_data.items():
+                setattr(db_image_process, field, value)
+            db.commit()
+            db.refresh(db_image_process)
+        return db_image_process
+
+    @staticmethod
+    def delete_image_process(db: Session, process_id: int) -> bool:
+        """删除图像处理记录"""
+        db_image_process = db.query(ImageProcess).filter(ImageProcess.id == process_id).first()
+        if db_image_process:
+            db.delete(db_image_process)
+            db.commit()
+            return True
+        return False
+
+    @staticmethod
+    def get_image_processes_by_status(db: Session, status: str, skip: int = 0, limit: int = 100) -> List[ImageProcess]:
+        """根据状态获取图像处理记录"""
+        return db.query(ImageProcess).filter(ImageProcess.status == status).offset(skip).limit(limit).all()
+
+    @staticmethod
+    def update_process_status(db: Session, process_id: int, status: str, result_path: str = None) -> Optional[
+        ImageProcess]:
+        """更新图像处理状态和结果路径"""
+        db_image_process = db.query(ImageProcess).filter(ImageProcess.id == process_id).first()
+        if db_image_process:
+            db_image_process.status = status
+            if result_path:
+                db_image_process.result_path = result_path
+            db.commit()
+            db.refresh(db_image_process)
+        return db_image_process
+
+
+class ScoreCRUD:
+    @staticmethod
+    def get_score(db: Session, score_id: int) -> Optional[Score]:
+        """根据ID获取评分记录"""
+        return db.query(Score).filter(Score.id == score_id).first()
+
+    @staticmethod
+    def get_score_by_assignment_id(db: Session, assignment_id: int) -> Optional[Score]:
+        """根据ID获取评分记录"""
+        return db.query(Score).filter(Score.assignment_id == assignment_id).first()
+
+    @staticmethod
+    def get_scores_by_task(db: Session, task_id: int, skip: int = 0, limit: int = 100) -> List[Score]:
+        """根据任务ID获取所有相关的评分记录"""
+        return db.query(Score).filter(Score.task_id == task_id).offset(skip).limit(limit).all()
+
+    @staticmethod
+    def get_scores_by_assignment(db: Session, assignment_id: int, skip: int = 0, limit: int = 100) -> List[Score]:
+        """根据作业ID获取所有相关的评分记录"""
+        return db.query(Score).filter(Score.assignment_id == assignment_id).offset(skip).limit(limit).all()
+
+    @staticmethod
+    def get_scores_by_user(db: Session, user_id: int, skip: int = 0, limit: int = 100) -> List[Score]:
+        """根据用户ID获取所有相关的评分记录"""
+        return db.query(Score).filter(Score.user_id == user_id).offset(skip).limit(limit).all()
+
+    @staticmethod
+    def create_score(db: Session, score: ScoreCreate) -> Score:
+        """创建新的评分记录"""
+        db_score = Score(**score.dict())
+        db.add(db_score)
+        db.commit()
+        db.refresh(db_score)
+        return db_score
+
+    @staticmethod
+    def update_score(db: Session, score_id: int, score_update: ScoreCreate) -> Optional[Score]:
+        """更新评分记录"""
+        db_score = db.query(Score).filter(Score.id == score_id).first()
+        if db_score:
+            update_data = score_update.dict(exclude_unset=True)
+            for field, value in update_data.items():
+                setattr(db_score, field, value)
+            db.commit()
+            db.refresh(db_score)
+        return db_score
+
+    @staticmethod
+    def delete_score(db: Session, score_id: int) -> bool:
+        """删除评分记录"""
+        db_score = db.query(Score).filter(Score.id == score_id).first()
+        if db_score:
+            db.delete(db_score)
+            db.commit()
+            return True
+        return False
+
+    @staticmethod
+    def get_average_score_by_assignment(db: Session, assignment_id: int) -> Optional[float]:
+        """计算作业的平均分数"""
+        result = db.query(db.func.avg(Score.score)).filter(Score.assignment_id == assignment_id).scalar()
+        return float(result) if result else None
+
+    @staticmethod
+    def get_average_score_by_user(db: Session, user_id: int) -> Optional[float]:
+        """计算用户的平均分数"""
+        result = db.query(db.func.avg(Score.score)).filter(Score.user_id == user_id).scalar()
+        return float(result) if result else None
+
+    @staticmethod
+    def get_scores_by_criteria(db: Session, min_score: float = None, max_score: float = None,
+                               assignment_id: int = None, user_id: int = None) -> List[Score]:
+        """根据多种条件查询评分记录"""
+        query = db.query(Score)
+
+        if min_score is not None:
+            query = query.filter(Score.score >= min_score)
+        if max_score is not None:
+            query = query.filter(Score.score <= max_score)
+        if assignment_id is not None:
+            query = query.filter(Score.assignment_id == assignment_id)
+        if user_id is not None:
+            query = query.filter(Score.user_id == user_id)
+
+        return query.all()
+
+
 # 实例化CRUD类
 user_crud = UserCRUD()
 assignment_crud = AssignmentCRUD()
 task_crud = TaskCRUD()
+image_process_crud = ImageProcessCRUD()
+score_crud = ScoreCRUD()

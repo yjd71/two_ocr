@@ -7,6 +7,14 @@ from typing import Optional
 import uuid
 import aiofiles
 
+from core.core_db.crud import user_crud, assignment_crud
+from core.core_db.database import get_db
+from core.core_db.schemas import AssignmentCreate, AssignmentBase
+
+# 获取数据库会话
+db_generator = get_db()
+db = next(db_generator)
+
 # 创建路由实例，添加API前缀和标签
 router = APIRouter()
 
@@ -49,7 +57,7 @@ async def ocr_api(file: Optional[UploadFile] = File(None)):
             raise validation_error_response("文件名不能为空或仅包含空格")
 
         # 生成唯一的assignment_path_id
-        assignment_path_id = str(uuid.uuid4())
+        assignment_path_id = str(Path(fileName).stem)
 
         # 提取文件扩展名（如 '.jpg' 或 '.cpp'）
         ext = Path(fileName).suffix
@@ -58,7 +66,7 @@ async def ocr_api(file: Optional[UploadFile] = File(None)):
         safe_name = f"{assignment_path_id}{ext}"
 
         # 定义初始图片上传目录
-        upload_dir = Path("C:/IT/AI/OCR/two_ocr/uploads/original_image  ")
+        upload_dir = Path("C:/IT/AI/OCR/two_ocr/uploads/original_image")
         upload_dir.mkdir(exist_ok=True)
 
         # 构建文件保存路径
@@ -72,8 +80,20 @@ async def ocr_api(file: Optional[UploadFile] = File(None)):
             # 写入到本地文件
             await out_file.write(content)
 
-        """ file_path根据查询数据库（where file_path == original_image_path），找到上传图片的id """
-        assignment_id = 1
+        """ 先根据file_path查询数据库中是否存在该图片，（where file_path == original_image_path） """
+        assignment = assignment_crud.get_assignment_by_file_path(db, f"{file_path}")
+        if assignment is None:
+            """ 存储图片到数据库中（ file_path -> original_image_path） """
+            assignment_data = AssignmentCreate(
+                original_image_path=f"{file_path}",
+                user_id=1,
+            )
+            created_assignment = assignment_crud.create_assignment(db, assignment_data)
+            """ 查询数据库，找到上传图片的id """
+            assignment_id = created_assignment.id
+        else:
+            """ 查询数据库，找到上传图片的id """
+            assignment_id = assignment.id
 
         # 准备响应数据，回显从file.filename获取的fileName
         data = {
@@ -91,4 +111,4 @@ async def ocr_api(file: Optional[UploadFile] = File(None)):
     except Exception as e:
         # 非预期错误，记录日志（假设有logger）
         # logger.exception(e)
-        return service_error_response(message=str("请求服务器错误"+str(e)))
+        return service_error_response(message=str("请求服务器错误" + str(e)))

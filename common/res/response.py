@@ -2,6 +2,7 @@ from typing import Generic, TypeVar, Optional
 from pydantic import BaseModel
 from enum import Enum
 from fastapi import status
+from fastapi.responses import JSONResponse  # 新增
 
 # 泛型类型变量，用于data字段
 T = TypeVar("T")
@@ -28,70 +29,52 @@ class ApiResponse(BaseModel, Generic[T]):
     data: Optional[T] = None
 
 
-# 工具函数，创建成功响应
-def success_response(data: Optional[T] = None) -> tuple[ApiResponse[T], int]:
+# 工具函数，创建成功响应 —— 返回 JSONResponse（body 为对象）
+def success_response(data: Optional[T] = None) -> JSONResponse:
     """
-    创建一个成功响应，代码为0，消息为"成功"，HTTP状态为200 OK。
-
-    :param data: 可选的数据载荷
-    :return: ApiResponse实例和HTTP状态码的元组
+    创建一个成功响应，code=0，message="成功"，HTTP状态为200。
+    返回 JSONResponse，body 是标准对象（非数组）。
     """
-    return (
-        ApiResponse[T](
-            code=ResponseCode.SUCCESS.value,
-            message=ResponseMessage.SUCCESS.value,
-            data=data
-        ),
-        status.HTTP_200_OK
+    resp = ApiResponse[T](
+        code=ResponseCode.SUCCESS.value,
+        message=ResponseMessage.SUCCESS.value,
+        data=data
     )
+    return JSONResponse(content=resp.dict(), status_code=status.HTTP_200_OK)
 
 
-# 工具函数，创建参数校验失败响应
-def validation_error_response(message: Optional[str] = None) -> tuple[ApiResponse[None], int]:
+# 工具函数，创建参数校验失败响应 —— 返回 JSONResponse（body 为对象）
+def validation_error_response(message: Optional[str] = None) -> JSONResponse:
     """
-    创建参数校验失败响应，代码为1001，自定义或默认消息，HTTP状态为400 Bad Request。
-
-    :param message: 可选的自定义消息；默认为"参数校验失败"
-    :return: ApiResponse实例和HTTP状态码的元组
+    创建参数校验失败响应，code=1001，HTTP状态为400。
     """
     msg = message if message else ResponseMessage.FAIL_VALID.value
-    return (
-        ApiResponse[None](
-            code=ResponseCode.FAIL_VALID.value,
-            message=msg,
-            data=None
-        ),
-        status.HTTP_400_BAD_REQUEST
+    resp = ApiResponse[None](
+        code=ResponseCode.FAIL_VALID.value,
+        message=msg,
+        data=None
     )
+    return JSONResponse(content=resp.dict(), status_code=status.HTTP_400_BAD_REQUEST)
 
 
-# 工具函数，创建服务异常响应
-def service_error_response(message: Optional[str] = None) -> tuple[ApiResponse[None], int]:
+# 工具函数，创建服务异常响应 —— 返回 JSONResponse（body 为对象）
+def service_error_response(message: Optional[str] = None) -> JSONResponse:
     """
-    创建服务异常响应，代码为1002，自定义或默认消息，HTTP状态为500 Internal Server Error。
-
-    :param message: 可选的自定义消息；默认为"服务异常"
-    :return: ApiResponse实例和HTTP状态码的元组
+    创建服务异常响应，code=1002，HTTP状态为500。
     """
     msg = message if message else ResponseMessage.FAIL_SERVICE.value
-    return (
-        ApiResponse[None](
-            code=ResponseCode.FAIL_SERVICE.value,
-            message=msg,
-            data=None
-        ),
-        status.HTTP_500_INTERNAL_SERVER_ERROR
+    resp = ApiResponse[None](
+        code=ResponseCode.FAIL_SERVICE.value,
+        message=msg,
+        data=None
     )
+    return JSONResponse(content=resp.dict(), status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# 通用工具函数，创建自定义错误响应
-def error_response(code: int, message: Optional[str] = None) -> tuple[ApiResponse[None], int]:
+# 通用工具函数，创建自定义错误响应 —— 返回 JSONResponse（body 为对象）
+def error_response(code: int, message: Optional[str] = None) -> JSONResponse:
     """
-    创建自定义错误响应，指定代码，自定义或默认消息，以及适当的HTTP状态。
-
-    :param code: 错误代码
-    :param message: 可选的自定义消息；默认为"错误代码: {code}"
-    :return: ApiResponse实例和HTTP状态码的元组
+    创建自定义错误响应并映射合适的 HTTP 状态码。
     """
     msg = message if message else f"错误代码: {code}"
     http_status = (
@@ -100,11 +83,9 @@ def error_response(code: int, message: Optional[str] = None) -> tuple[ApiRespons
         else status.HTTP_500_INTERNAL_SERVER_ERROR if code == ResponseCode.FAIL_SERVICE.value
         else status.HTTP_500_INTERNAL_SERVER_ERROR
     )
-    return (
-        ApiResponse[None](
-            code=code,
-            message=msg,
-            data=None
-        ),
-        http_status
+    resp = ApiResponse[None](
+        code=code,
+        message=msg,
+        data=None
     )
+    return JSONResponse(content=resp.dict(), status_code=http_status)

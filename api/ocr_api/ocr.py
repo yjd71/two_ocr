@@ -1,14 +1,22 @@
+import os
+import time
+
+import aiofiles
+
+from core.core_db.crud import assignment_crud
+from core.core_db.schemas import AssignmentCreate, AssignmentUpdate
 from src.PaddleOCR import ocr_v2
 from fastapi import FastAPI, HTTPException, APIRouter
 from common.res.response import success_response, validation_error_response, service_error_response, ApiResponse
+from core.core_db.database import get_db, test_engine, Base
+from pathlib import Path
+
+# 获取数据库会话
+db_generator = get_db()
+db = next(db_generator)
 
 # 创建路由实例，添加API前缀和标签
 router = APIRouter()
-
-
-# 查询数据库获取作业图片
-def get_assignment_image(assignmentId):
-    pass
 
 
 @router.post("/api/assignments/{assignmentId}/ocr")
@@ -30,19 +38,24 @@ async def ocr_api(assignmentId: str):
         if not assignmentId or not isinstance(assignmentId, str):
             return validation_error_response(message="作业ID无效")
 
-
-        # 查询数据库获取作业图片
-        image_data = get_assignment_image(assignmentId)
-        image = '../../Data/zhangqikui/test1/IMG_20250928_222538.jpg'
-        if image_data is None:
+        """ 根据作业ID，查询数据库的作业地址，获取作业图片 （where file_path == original_image_path） """
+        """ 先根据file_path查询数据库中是否存在该图片，（where file_path == original_image_path） """
+        assignment = assignment_crud.get_assignment(db, assignmentId)
+        if assignment is None:
             return validation_error_response(message="未找到对应的作业图片")
+
+        # 拿到图片路径的中的图片名称
+        image = f"{assignment.original_image_path}"
+        filename = os.path.splitext(os.path.basename(assignment.original_image_path))
+        filename = f"{filename[0]}{filename[1]}"
+        save_dir = "C:/IT/AI/OCR/two_ocr/uploads/processed_image/"
+        os.makedirs(save_dir, exist_ok=True)
+        # 构建文件保存路径
+        processed_image_path = save_dir + filename
 
         """ ocr识别 """
         # 使用PaddleOCR识别 的结果
-        results = ocr_v2.paddle_ocr(image)
-        # for res in result:
-        #     res.save_to_img("output")
-
+        results = ocr_v2.paddle_ocr(image, processed_image_path)
         if results is None:
             return service_error_response(message="OCR处理失败")
 
@@ -52,22 +65,28 @@ async def ocr_api(assignmentId: str):
         code_str = ocr_v2.ocr_recognition_return_string(results)
 
         # 合并为 string（和之前给的合并函数等价）
-        print("=== 原始 OCR 字符串 ===")
-        print(code_str)
+        # print("=== 原始 OCR 字符串 ===")
+        # print(code_str)
         """ ocr识别结果的源代码字符串入库 （根据uri传递的请求参数 作业ID 查询数据库，如果该作业存在，则更新作业，否则创建新作业）"""
 
         # 后处理 OCR 识别出来的代码字符串，返回修正后的代码字符串。
         corrected = ocr_v2.postprocess_code(code_str, verbose=True)
-        print("\n=== 后处理后 ===")
-        print(corrected)
+        # print("\n=== 后处理后 ===")
+        # print(corrected)
+
         """ ocr识别结果的源代码字符串后处理后入库 （根据uri传递的请求参数 作业ID 查询数据库，如果该作业存在，则更新作业，否则创建新作业）"""
-
-
+        assignment_data = AssignmentUpdate(
+            status="ocr",
+            processed_image_path=f"{processed_image_path}",
+            extracted_code=corrected,
+            processed_at=time.time(),
+        )
+        assignment_crud.update_assignment(db, assignmentId, assignment_data)
         """ 响应, OCR 识别到的源代码文本 """
         # 返回成功响应
-        return success_response(data={"recognizedCode": corrected})
+        return success_response(data={"recognizedCode": f"{corrected}"})
 
     except ValueError as e:
         return validation_error_response(message=str(e))
     except Exception as e:
-        return service_error_response(message="服务器内部错误")
+        return service_error_response(message=str("请求服务器错误" + str(e)))
