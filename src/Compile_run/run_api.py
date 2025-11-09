@@ -1,7 +1,6 @@
 import re
-from datetime import datetime
 import json
-
+from datetime import datetime
 
 
 class MockCppCompiler:
@@ -28,6 +27,8 @@ class MockCppCompiler:
         """
         # 初始化响应结构
         response = {
+            "code": 0,
+            "message": "成功",
             "data": {
                 "language": "C++",
                 "codeLengthBytes": len(source_code.encode('utf-8')),
@@ -36,17 +37,23 @@ class MockCppCompiler:
                 "compileSuccess": False,
                 "output": None,
                 "error": None,
+                "score": 0  # 添加评分字段
             }
         }
 
         # 分析代码并模拟编译结果
-        compile_success, output, error = self._analyze_code(source_code)
+        compile_success, output, error, score = self._analyze_code(source_code)
 
         response["data"]["compileSuccess"] = compile_success
+        response["data"]["score"] = score
+
         if compile_success:
             response["data"]["output"] = output
         else:
             response["data"]["error"] = error
+            # 如果编译失败，设置相应的错误码和消息
+            response["code"] = 1
+            response["message"] = "编译失败"
 
         return response
 
@@ -57,19 +64,63 @@ class MockCppCompiler:
         # 检查常见语法错误
         syntax_errors = self._check_syntax_errors(source_code)
         if syntax_errors:
-            return False, None, syntax_errors
+            return False, None, syntax_errors, 0  # 编译失败，分数为0
+
+        # 计算分数
+        score = self._calculate_score(source_code)
 
         # 检查是否能输出Hello World
         if self._contains_hello_world(source_code):
-            return True, "Hello, World!\n", None
+            return True, "Hello, World!\n", None, score
 
         # 检查是否有输出语句
         output = self._simulate_output(source_code)
         if output:
-            return True, output, None
+            return True, output, None, score
 
         # 默认情况：编译成功但无输出
-        return True, "", None
+        return True, "", None, score
+
+    def _calculate_score(self, source_code):
+        """
+        根据代码质量计算分数
+        评分规则：
+        - 基础分：编译成功得50分
+        - 包含main函数：+20分
+        - 包含正确的头文件：+10分
+        - 包含return语句：+10分
+        - 输出Hello World：+10分
+        - 代码格式规范（有适当的缩进和换行）：+10分
+        """
+        score = 0
+
+        # 基础分：编译成功
+        score += 50
+
+        # 检查main函数
+        if "int main" in source_code or "void main" in source_code:
+            score += 20
+
+        # 检查头文件
+        if "#include" in source_code:
+            score += 10
+
+        # 检查return语句
+        if "return" in source_code:
+            score += 10
+
+        # 检查是否输出Hello World
+        if self._contains_hello_world(source_code):
+            score += 10
+
+        # 检查代码格式（简单的缩进检查）
+        lines = source_code.split('\n')
+        indented_lines = sum(1 for line in lines if line.strip() and line.startswith('    '))
+        if indented_lines > len(lines) * 0.3:  # 如果30%以上的非空行有缩进
+            score += 10
+
+        # 确保分数不超过100
+        return min(score, 100)
 
     def _check_syntax_errors(self, source_code):
         """检查常见语法错误"""
@@ -153,15 +204,8 @@ class MockCppCompiler:
 # 使用示例和测试
 def compile_run(success_code):
     compiler = MockCppCompiler()
-
-    # 测试成功案例 - Hello World
-
     result = compiler.compile_and_run(success_code)
     return result
-
-
-
-
 
 
 if __name__ == "__main__":
@@ -172,9 +216,7 @@ if __name__ == "__main__":
         return 0;
     }
     """
-    result=compile_run(success_code)
-    # var = result["data"]["language"]
-    # print(var)
+    result = compile_run(success_code)
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
 

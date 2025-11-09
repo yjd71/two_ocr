@@ -79,6 +79,7 @@ async def compile_run(assignmentId: str):
                                       "compileSuccess": results["data"]["compileSuccess"],
                                       "output": results["data"]["output"],
                                       "error": results["data"]["error"],
+                                      "score": results["data"]["score"],
                                       })
 
     except ValueError as e:
