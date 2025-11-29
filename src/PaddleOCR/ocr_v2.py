@@ -306,6 +306,7 @@ def postprocess_code(code_str: str, verbose: bool = False) -> str:
 
 if __name__ == '__main__':
     image = '../../Data/zhangqikui/test1/IMG_20250928_222538.jpg'
+
     # 使用PaddleOCR识别 的结果，
     results = paddle_ocr(image)
     # #  保存识别结果的图片和json数据

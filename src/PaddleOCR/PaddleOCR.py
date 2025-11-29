@@ -101,7 +101,7 @@ def paddle_ocr(image, preprocessed_image_save_path=None):
 
 if __name__ == '__main__':
     image = '../../Data/zhangqikui/test1/IMG_20250928_222538.jpg'
-
+    # image = 'img.png'
     # 使用PaddleOCR识别
     result = paddle_ocr(image)
 

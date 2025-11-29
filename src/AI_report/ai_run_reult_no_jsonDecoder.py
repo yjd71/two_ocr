@@ -74,7 +74,7 @@ class KimiCppScorer:
         return prompt
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
-    def score_cpp_code(self, code: str, requirements: str) -> Dict[str, Any]:
+    def score_cpp_code(self, code: str, run_result: str, requirements: str) -> Dict[str, Any]:
         """
         使用KIMI API对C++代码进行评分
 
@@ -98,7 +98,7 @@ class KimiCppScorer:
                 },
                 {
                     "role": "user",
-                    "content": f"{prompt}\n\n需要评分的代码:\n```cpp\n{code}\n,```"
+                    "content": f"{prompt}\n\n需要评分的代码:\n```cpp\n{code}\n```\n代码运行结果：\n{run_result}"
                 }
             ],
             "temperature": 0.1,  # 低温度确保评分一致性
@@ -143,35 +143,26 @@ class KimiCppScorer:
         Returns:
             解析后的JSON字典
         """
-        try:
-            # 尝试从代码块中提取JSON
-            if "```json" in content:
-                json_start = content.find("```json") + 7
-                json_end = content.find("```", json_start)
-                json_str = content[json_start:json_end].strip()
-            elif "{" in content and "}" in content:
-                # 尝试提取大括号内的JSON
-                json_start = content.find("{")
-                json_end = content.rfind("}") + 1
-                json_str = content[json_start:json_end]
-            else:
-                # 如果没有明显的JSON标记，使用整个内容
-                json_str = content
+        # 尝试从代码块中提取JSON
+        if "```json" in content:
+            json_start = content.find("```json") + 7
+            json_end = content.find("```", json_start)
+            json_str = content[json_start:json_end].strip()
+        elif "{" in content and "}" in content:
+            # 尝试提取大括号内的JSON
+            json_start = content.find("{")
+            json_end = content.rfind("}") + 1
+            json_str = content[json_start:json_end]
+        else:
+            # 如果没有明显的JSON标记，使用整个内容
+            json_str = content
 
-            # 解析JSON
-            return json.loads(json_str)
-        except json.JSONDecodeError as e:
-            logger.error(f"解析JSON失败: {e}")
-            return {
-                "score": 0,
-                "reason": "无法解析评分结果",
-                "suggestions": ["请检查代码格式或重新提交"],
-                "error": str(e)
-            }
+        # 解析JSON
+        return json.loads(json_str)
 
 
 # 使用示例
-def ai(perfect_code):
+def ai(perfect_code, run_result):
     # 使用您的KIMI API密钥
     api_key = "sk-AKRioPFeI74AGxRBwNoSh4BQZkJSv43ommpFrLpx5yYh9zRQ"
 
@@ -181,7 +172,7 @@ def ai(perfect_code):
     requirements = "实现栈的几种基本功能，包括push(入栈)、pop(出栈)、top(获取栈顶元素)。"
 
     print("正在对C++代码进行评分...")
-    result = scorer.score_cpp_code(perfect_code, requirements)
+    result = scorer.score_cpp_code(perfect_code, run_result, requirements)
 
     return result
 
@@ -189,69 +180,57 @@ def ai(perfect_code):
 if __name__ == "__main__":
     # C++代码
     perfect_code = """
-
-            #include <iostream>
-        using namespace std;
-        Class Stack{
-        private;
-        intt elements;
-        int top;
-        int maxSize;
-        public;
-        Stack(int size=s){
-        maxSize =size;
-        elements = new intimaxsizel;
-        top=-i;
-        3
-        ~Stack(){
-        deleteilelements;}
-        void push cint element}{
-        if (top<maxSize -i)
-        elements [++top]=element;
-        cout<<“元素<<eleme<<t《入成”ccendl；}
-        else  cout<<“栈满，无法入栈<<endc；}
-        int pop()
-        if(top>=o){
-        int element;elements Itop--};
-        cout<<“元素<<eleme<<t《s“出成功”cendl；;
-        else cout<<”，无法出栈"aendl；
-        retun i;
-
-        int getsize()
-        int size=t0p+i;
-        cout<<“中当前有<<siz<<“元<<”《cendl；;
-        Veturn size;
-        int get emptylots()
-        int empty=maxSize-(t0p+i);
-        Gout<s中还剩”<<empt<<“个位”ccendl；
-        Yeturn empey;
-
-        int main()
-        Stack stack;
-        stack pushcv;
-        stack,push(z);
-        stack.popl;
-        Stack.getsize();
-        L;
-        Stack.get&emptyslots()i;
-        Yeturn Di;
-        1
-        """
+    "#include_ciostream>
+1
+using namespace std
+class Stack{
+private;
+int efementsi
+int top
+int maxSize:
+public:
+Stack(int_size=5){
+maxSize =sizeof:
+elements = new intimaxsize]i
+top=-1;
+~Stack(){
+deleteilelementsi}
+.void push int element){
+if (top maxSize-1){
+elements I++top]=element;
+cout<元素"<element<:栈成end}
+else cout"满,无法入栈<endl}
+int_pop()
+ifctop>=0)8
+int_element=elements top-];
+cout<"元素<element<成功"s endi;}
+elsecout<",无法出栈aendl;
+Yeturnti}
+int_getsize()
+int sizeof=top+1i
+cout<"中当前有"<sizeof<个元素"<endl;
+return sizeof;}
+int_get emptylots()
+int_empty=maxSize-top+1);
+cut中还剩"<empty<"个位"<endl;
+return emptyi}
+3
+int mainc)
+Stack Stack;
+Stack push.cui
+1
+Stack.push(z).
+StackpopL);
+Stack.getsize(-):
+Stack.get&emptyslots)i
+Yeturn_vi  """
 
     run_result = """
-        {
-            "language": "C++",
-            "codeLengthBytes": 781,
-            "submitTime": "2025-10-27 22:56:17",
-            "evalTime": "2025-10-27 22:56:17",
-            "compileSuccess": false,
-            "output": null,
-            "error": "main.cpp:2: error: expected ';' before '}' token"
-        }
+       {"data": {"error": "main.cpp:1: error: expected ';' before '}' token", "output": null, "evalTime": "2025-10-28 23:00:35", "language": "C++", "submitTime": "2025-10-28 23:00:35", "compileSuccess": false, "codeLengthBytes": 204}}
 
         """
+    result = ai(perfect_code, run_result)
 
-    result = ai(perfect_code)
 
     print("评分结果:")
     print(json.dumps(result, indent=2, ensure_ascii=False))

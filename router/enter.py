@@ -4,6 +4,8 @@ from api.AI_api.ai_api import router as ai_router
 from api.ocr_api.ocr import router as ocr_router
 from api.Compile_run.run_api import router as compile_run_router
 from api.upload_img.upload_api import router as upload_router
+from api.ocr_api.deepseek_ocr import router as deepseek_ocr_router
+
 
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,6 +35,7 @@ def router():
 
     app.include_router(ai_router)
     app.include_router(upload_router)
+    app.include_router(deepseek_ocr_router)
 
 
     return app

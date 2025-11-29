@@ -93,6 +93,8 @@
 ### 响应（HTTP 200）
 成功返回：
 - `data.recognizedCode` (`string`) — OCR 识别到的源代码文本（包含换行符）。
+- `processed_image_path`(`string`) — 预处理图片
+- `res_image_path`(`string`) — OCR识别结果图片
 
 示例：
 ```json
@@ -100,7 +102,9 @@
   "code": 0,
   "message": "成功",
   "data": {
-    "recognizedCode": "#include <iostream>\nusing namespace std;\nint main() { cout << \"Hello, World!\" << endl; return 0; }\n"
+    "recognizedCode": "#include <iostream>\nusing namespace std;\nint main() { cout << \"Hello, World!\" << endl; return 0; }\n",
+    "processed_image_path": "C:/IT/AI/OCR/two_ocr/uploads/processed_image",
+    "res_image_path": "C:/IT/AI/OCR/two_ocr/uploads/original_image"
   }
 }
 ```
