@@ -10,6 +10,7 @@ from fastapi import FastAPI, HTTPException, APIRouter
 from common.res.response import success_response, validation_error_response, service_error_response, ApiResponse
 from core.core_db.database import get_db, test_engine, Base
 from pathlib import Path
+from config import image_processed_path, app
 
 # 获取数据库会话
 db_generator = get_db()
@@ -48,7 +49,7 @@ async def ocr_api(assignmentId: str):
         image = f"{assignment.original_image_path}"
         filename = os.path.splitext(os.path.basename(assignment.original_image_path))
         filename = f"{filename[0]}{filename[1]}"
-        save_dir = "C:/IT/AI/OCR/two_ocr/uploads/processed_image/"
+        save_dir = image_processed_path
         os.makedirs(save_dir, exist_ok=True)
         # 构建文件保存路径
         processed_image_path = save_dir + filename
@@ -60,7 +61,7 @@ async def ocr_api(assignmentId: str):
             res_img_path = processed_image_path.replace("\\", "/")
 
         # print(filename)  # 输出：uploads/original_image/IMG_20250928_220327.jpg
-        res_img_path = " http://127.0.0.1:8000/" + res_img_path
+        res_img_path = app['static_url_path'] + res_img_path
         # print("res_img_path: ", res_img_path)
 
         """ ocr识别 """

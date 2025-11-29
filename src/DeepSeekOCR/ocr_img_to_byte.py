@@ -6,9 +6,10 @@ from clarifai_grpc.channel.clarifai_channel import ClarifaiChannel
 from clarifai_grpc.grpc.api import resources_pb2, service_pb2, service_pb2_grpc
 from clarifai_grpc.grpc.api.status import status_code_pb2
 import os
+from config import API_KEY
 
 # Your PAT (Personal Access Token) can be found in the Account's Security section
-PAT = '3f2dd13de7aa4475b21378c4eb5889d7'
+PAT = API_KEY
 # Specify the correct user_id/app_id pairings
 # Since you're making inferences outside your app's scope
 USER_ID = 'deepseek-ai'
