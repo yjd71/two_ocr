@@ -178,6 +178,8 @@ def ai(perfect_code):
     # 创建评分器实例
     scorer = KimiCppScorer(api_key)
 
+
+
     requirements = "实现栈的几种基本功能，包括push(入栈)、pop(出栈)、top(获取栈顶元素)。"
 
     print("正在对C++代码进行评分...")
@@ -190,67 +192,53 @@ if __name__ == "__main__":
     # C++代码
     perfect_code = """
 
-            #include <iostream>
-        using namespace std;
-        Class Stack{
-        private;
-        intt elements;
-        int top;
-        int maxSize;
-        public;
-        Stack(int size=s){
-        maxSize =size;
-        elements = new intimaxsizel;
-        top=-i;
-        3
-        ~Stack(){
-        deleteilelements;}
-        void push cint element}{
-        if (top<maxSize -i)
-        elements [++top]=element;
-        cout<<“元素<<eleme<<t《入成”ccendl；}
-        else  cout<<“栈满，无法入栈<<endc；}
-        int pop()
-        if(top>=o){
-        int element;elements Itop--};
-        cout<<“元素<<eleme<<t《s“出成功”cendl；;
-        else cout<<”，无法出栈"aendl；
-        retun i;
+    #include <iostream>
+using namespace std;
+Class Stack{
+private;
+intt elements;
+int top;
+int maxSize;
+public;
+Stack(int size=s){
+maxSize =size;
+elements = new intimaxsizel;
+top=-i;
+3
+~Stack(){
+deleteilelements;}
+void push cint element}{
+if (top<maxSize -i)
+elements [++top]=element;
+cout<<“元素<<eleme<<t《入成”ccendl；}
+else  cout<<“栈满，无法入栈<<endc；}
+int pop()
+if(top>=o){
+int element;elements Itop--};
+cout<<“元素<<eleme<<t《s“出成功”cendl；;
+else cout<<”，无法出栈"aendl；
+retun i;
 
-        int getsize()
-        int size=t0p+i;
-        cout<<“中当前有<<siz<<“元<<”《cendl；;
-        Veturn size;
-        int get emptylots()
-        int empty=maxSize-(t0p+i);
-        Gout<s中还剩”<<empt<<“个位”ccendl；
-        Yeturn empey;
+int getsize()
+int size=t0p+i;
+cout<<“中当前有<<siz<<“元<<”《cendl；;
+Veturn size;
+int get emptylots()
+int empty=maxSize-(t0p+i);
+Gout<s中还剩”<<empt<<“个位”ccendl；
+Yeturn empey;
 
-        int main()
-        Stack stack;
-        stack pushcv;
-        stack,push(z);
-        stack.popl;
-        Stack.getsize();
-        L;
-        Stack.get&emptyslots()i;
-        Yeturn Di;
-        1
+int main()
+Stack stack;
+stack pushcv;
+stack,push(z);
+stack.popl;
+Stack.getsize();
+L;
+Stack.get&emptyslots()i;
+Yeturn Di;
+1
         """
-
-    run_result = """
-        {
-            "language": "C++",
-            "codeLengthBytes": 781,
-            "submitTime": "2025-10-27 22:56:17",
-            "evalTime": "2025-10-27 22:56:17",
-            "compileSuccess": false,
-            "output": null,
-            "error": "main.cpp:2: error: expected ';' before '}' token"
-        }
-
-        """
-
     result = ai(perfect_code)
 
     print("评分结果:")
