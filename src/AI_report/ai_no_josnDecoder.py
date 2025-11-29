@@ -143,31 +143,24 @@ class KimiCppScorer:
         Returns:
             解析后的JSON字典
         """
-        try:
-            # 尝试从代码块中提取JSON
-            if "```json" in content:
-                json_start = content.find("```json") + 7
-                json_end = content.find("```", json_start)
-                json_str = content[json_start:json_end].strip()
-            elif "{" in content and "}" in content:
-                # 尝试提取大括号内的JSON
-                json_start = content.find("{")
-                json_end = content.rfind("}") + 1
-                json_str = content[json_start:json_end]
-            else:
-                # 如果没有明显的JSON标记，使用整个内容
-                json_str = content
 
-            # 解析JSON
-            return json.loads(json_str)
-        except json.JSONDecodeError as e:
-            logger.error(f"解析JSON失败: {e}")
-            return {
-                "score": 0,
-                "reason": "无法解析评分结果",
-                "suggestions": ["请检查代码格式或重新提交"],
-                "error": str(e)
-            }
+        # 尝试从代码块中提取JSON
+        if "```json" in content:
+            json_start = content.find("```json") + 7
+            json_end = content.find("```", json_start)
+            json_str = content[json_start:json_end].strip()
+        elif "{" in content and "}" in content:
+            # 尝试提取大括号内的JSON
+            json_start = content.find("{")
+            json_end = content.rfind("}") + 1
+            json_str = content[json_start:json_end]
+        else:
+            # 如果没有明显的JSON标记，使用整个内容
+            json_str = content
+
+        # 解析JSON
+        return json.loads(json_str)
+
 
 
 # 使用示例

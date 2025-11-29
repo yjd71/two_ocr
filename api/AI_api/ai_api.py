@@ -3,7 +3,7 @@ import time
 from core.core_db.crud import score_crud, assignment_crud, image_process_crud
 from core.core_db.database import get_db
 from core.core_db.schemas import ScoreCreate, ScoreUpdate
-from src.AI_report import ai, ai_run_reult
+from src.AI_report import ai_no_josnDecoder, ai_run_reult
 from fastapi import FastAPI, HTTPException, APIRouter
 from common.res.response import success_response, validation_error_response, service_error_response, ApiResponse
 
@@ -47,10 +47,12 @@ async def AI_api(assignmentId: str):
         # print(f"{run_result}")
 
         """ 调用大模型进行评分，返回评分结果 """
-        results = ai.ai(f"{perfect_code}")
+        results = ai_no_josnDecoder.ai(f"{perfect_code}")
         # results = ai_run_reult.ai(f"{perfect_code}",f"{run_result}")
         if results is None:
             return service_error_response(message="AI调用失败")
+
+        # 最终分数(规则评分和AI评分的加权融合)  final_score = rule_score × 0.35 + ai_score × 0.65
 
         """ 将 ai 输出结果保存在数据库中 （根据uri传递的请求参数 作业ID 查询数据库，如果该ai报告存在，则更新ai报告，否则创建新ai报告）"""
         score = score_crud.get_score_by_assignment_id(db, assignmentId)

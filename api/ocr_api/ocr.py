@@ -53,6 +53,16 @@ async def ocr_api(assignmentId: str):
         # 构建文件保存路径
         processed_image_path = save_dir + filename
 
+        #  uploads 目录映射到一个静态 URL, http://127.0.0.1:8000/uploads/processed image.jpg
+        if "uploads" in processed_image_path:
+            res_img_path = "uploads" + processed_image_path.split("uploads")[1].replace("\\", "/")
+        else:
+            res_img_path = processed_image_path.replace("\\", "/")
+
+        # print(filename)  # 输出：uploads/original_image/IMG_20250928_220327.jpg
+        res_img_path = " http://127.0.0.1:8000/" + res_img_path
+        # print("res_img_path: ", res_img_path)
+
         """ ocr识别 """
         # 使用PaddleOCR识别 的结果
         results = ocr_v2.paddle_ocr(image, processed_image_path)
@@ -84,7 +94,10 @@ async def ocr_api(assignmentId: str):
         assignment_crud.update_assignment(db, assignmentId, assignment_data)
         """ 响应, OCR 识别到的源代码文本 """
         # 返回成功响应
-        return success_response(data={"recognizedCode": f"{corrected}"})
+        return success_response(data={"recognizedCode": f"{corrected}",
+                                      "processed_image_path": f"{res_img_path}",
+                                      "res_image_path": f"{res_img_path}"
+                                      })
 
     except ValueError as e:
         return validation_error_response(message=str(e))
