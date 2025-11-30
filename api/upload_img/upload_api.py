@@ -1,20 +1,19 @@
-from fastapi import FastAPI, HTTPException, APIRouter
 from common.res.response import success_response, validation_error_response, service_error_response, ApiResponse
 
 from fastapi import UploadFile, File, Form
 from pathlib import Path
 from typing import Optional
-import uuid
+
 import aiofiles
 
 from core.core_db.crud import user_crud, assignment_crud
-from core.core_db.database import get_db
+
 from core.core_db.schemas import AssignmentCreate, AssignmentBase
 from config import img_upload_dir
 
-# 获取数据库会话
-db_generator = get_db()
-db = next(db_generator)
+from fastapi import Depends, APIRouter
+from sqlalchemy.orm import Session  # 导入 Session 类型
+from core.core_db.database import get_db
 
 # 创建路由实例，添加API前缀和标签
 router = APIRouter()
@@ -26,7 +25,9 @@ router = APIRouter()
 
 
 @router.post("/api/assignments")
-async def ocr_api(file: Optional[UploadFile] = File(None)):
+async def ocr_api(file: Optional[UploadFile] = File(None),
+                  db: Session = Depends(get_db)  # ✅通过依赖注入获取每个请求独立的 db 会话
+                  ):
     """
     上传作业文件（支持图片或源码文件），从上传文件中提取文件名，服务端存储文件并返回唯一assignmentId。
 

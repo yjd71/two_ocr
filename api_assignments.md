@@ -24,8 +24,8 @@
 ## 接口总览（新增删改查接口）
 1. `DELETE /api/assignments/{assignmentId}` — 删除单个作业（包括关联数据）
 2. `DELETE /api/assignments` — 批量删除作业（包括关联数据）
-3`GET /api/assignments/{assignmentId}` — 查看单个作业（包括关联数据）
-4`GET /api/assignments` — 批量查看作业列表（包括关联数据）
+3. `GET /api/assignments/{assignmentId}` — 查看单个作业（包括关联数据）
+4. `GET /api/assignments` — 批量查看作业列表（包括关联数据）
 
 ---
 
@@ -228,23 +228,24 @@
 - **用途**：分页获取作业列表，包括每个作业的简要信息以及关联的OCR结果、编译结果、评分报告。
 
 ### 查询参数说明
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `page` | `int` | 否 | 页码，从1开始，默认1 |
-| `pageSize` | `int` | 否 | 每页数量，默认10，最大100 |
-| `sortBy` | `string` | 否 | 排序字段：createdAt/fileName，默认createdAt |
-| `sortOrder` | `string` | 否 | 排序顺序：asc/desc，默认desc |
+| 字段 | 类型 | 必填 | 说明                               |
+|------|------|------|----------------------------------|
+| `page` | `int` | 否 | 页码，从1开始，默认1                      |
+| `pageSize` | `int` | 否 | 每页数量，默认10，最大100                  |
+| `sortBy` | `string` | 否 | 排序字段：createdAt/score，默认createdAt |
+| `sortOrder` | `string` | 否 | 排序顺序：asc/desc，默认desc             |
 
 ### 响应字段说明（HTTP 200）
 #### 作业列表信息
-| 字段 | 类型       | 说明           |
-|------|----------|--------------|
-| `assignments[].assignmentId` | `int`    | 作业唯一标识符      |
-| `assignments[].fileName` | `string` | 文件名          |
-| `assignments[].storedAt` | `string` | 文件存储路径       |
-| `assignments[].status` | `string` | 状态           |
-| `assignments[].createdAt` | `string` | 创建时间戳        |
-| `assignments[].updatedAt` | `string` | 最后更新时间戳      |
+| 字段                           | 类型       | 说明      |
+|------------------------------|----------|---------|
+| `assignments[].assignmentId` | `int`    | 作业唯一标识符 |
+| `assignments[].fileName`     | `string` | 文件名     |
+| `assignments[].storedAt`     | `string` | 文件存储路径  |
+| `assignments[].status`       | `string` | 状态      |
+| `assignments[].score`        | `string` | 总分      |
+| `assignments[].createdAt`    | `string` | 创建时间戳   |
+| `assignments[].updatedAt`    | `string` | 最后更新时间戳 |
 
 
 #### 分页信息
@@ -266,7 +267,8 @@
         "assignmentId": 1,
         "fileName": "homework1.jpg",
         "storedAt": "/files/abcd1234/homework1.jpg",
-        "status": "ocr",
+        "status": "识别成功",
+        "score": 80,
         "createdAt": "2025-10-24 21:39:50",
         "updatedAt": "2025-10-24 21:40:05"
       },
@@ -274,7 +276,8 @@
         "assignmentId": 2,
         "fileName": "homework2.cpp",
         "storedAt": "/files/efgh5678/homework2.cpp",
-        "status": "ocr",
+        "status": "识别成功",
+        "score": 90,
         "createdAt": "2025-10-24 22:15:30",
         "updatedAt": "2025-10-24 22:15:30"
       }

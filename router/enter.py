@@ -6,6 +6,7 @@ from api.Compile_run.run_api import router as compile_run_router
 from api.upload_img.upload_api import router as upload_router
 from api.ocr_api.deepseek_ocr import router as deepseek_ocr_router
 
+from api.assignments.get_assignments import router as get_assignments_router
 
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,13 +30,25 @@ def router():
     )
 
     # 包含路由模块
-    app.include_router(ocr_router)
-
-    app.include_router(compile_run_router)
-
-    app.include_router(ai_router)
+    #  上传路由
     app.include_router(upload_router)
+    #  ocr路由
+    app.include_router(ocr_router)
+    #  编译运行路由
+    app.include_router(compile_run_router)
+    #  ai报告路由
+    app.include_router(ai_router)
+    #  deepseek-ocr路由
     app.include_router(deepseek_ocr_router)
+
+    #  获取单个作业路由
+    app.include_router(get_assignments_router)
+    # #  批量获取作业路由
+    # app.include_router(get_assignments_router)
+    # #  删除单个作业路由
+    # app.include_router(get_assignments_router)
+    # #  批量删除作业路由
+    # app.include_router(get_assignments_router)
 
 
     return app
