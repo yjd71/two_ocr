@@ -14,7 +14,7 @@ if __name__ == "__main__":
     init_db.main()
 
     # 初始化deepseek-OCR模型（全局）
-    global_models.init_ocr_model()
+    # global_models.init_ocr_model()
 
     # 创建FastAPI应用实例
     # 配置CORS，允许前端跨域访问（根据需要调整）

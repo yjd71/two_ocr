@@ -1,27 +1,24 @@
 import os
 import time
 
-import aiofiles
-
 from core.core_db.crud import assignment_crud
 from core.core_db.schemas import AssignmentCreate, AssignmentUpdate
 from src.PaddleOCR import ocr_v2
-from fastapi import FastAPI, HTTPException, APIRouter
 from common.res.response import success_response, validation_error_response, service_error_response, ApiResponse
-from core.core_db.database import get_db, test_engine, Base
-from pathlib import Path
 from config import image_processed_path, app
 
-# 获取数据库会话
-db_generator = get_db()
-db = next(db_generator)
+from fastapi import Depends, APIRouter
+from sqlalchemy.orm import Session  # 导入 Session 类型
+from core.core_db.database import get_db
 
 # 创建路由实例，添加API前缀和标签
 router = APIRouter()
 
 
 @router.post("/api/assignments/{assignmentId}/ocr")
-async def ocr_api(assignmentId: int):
+async def ocr_api(assignmentId: int,
+                  db: Session = Depends(get_db)  # ✅通过依赖注入获取每个请求独立的 db 会话
+                  ):
     """ 进行HTTP参数绑定，前端 uri 请求数据 （作业ID）
                   根据 作业ID 查询数据库中的作业图片
               """

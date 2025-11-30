@@ -1,22 +1,22 @@
 import time
 
 from core.core_db.crud import assignment_crud, image_process_crud
-from core.core_db.database import get_db
 from core.core_db.schemas import ImageProcessCreate, ImageProcessUpdate
 from src.Compile_run import run_api
-from fastapi import FastAPI, HTTPException, APIRouter
 from common.res.response import success_response, validation_error_response, service_error_response, ApiResponse
 
-# 获取数据库会话
-db_generator = get_db()
-db = next(db_generator)
+from fastapi import Depends, APIRouter
+from sqlalchemy.orm import Session  # 导入 Session 类型
+from core.core_db.database import get_db
 
 # 创建路由实例，添加API前缀和标签
 router = APIRouter()
 
 
 @router.post("/api/assignments/{assignmentId}/Compile_run")
-async def compile_run(assignmentId: int):
+async def compile_run(assignmentId: int,
+                      db: Session = Depends(get_db)  # ✅通过依赖注入获取每个请求独立的 db 会话
+                      ):
     """ 进行HTTP参数绑定，前端 uri 请求数据 （作业ID）
                   根据 作业ID 查询数据库中的作业图片
               """
@@ -58,6 +58,7 @@ async def compile_run(assignmentId: int):
             image_process_data = ImageProcessCreate(
                 assignment_id=assignmentId,
                 process_step="compile_run",
+                confidence_score=results["data"]["score"],
                 process_result=results,
                 processed_at=time.time()
             )
@@ -65,8 +66,9 @@ async def compile_run(assignmentId: int):
         else:
             """ 查询数据库，该作业的编译结果存在，则更新编译结果 """
             image_process_update_data = ImageProcessUpdate(
-                process_step="compile_run",
+                confidence_score=float(results["data"]["score"]),
                 process_result=results,
+                processed_at=time.time()
             )
             image_process_crud.update_image_process(db, assignmentId, image_process_update_data)
 
