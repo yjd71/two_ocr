@@ -50,7 +50,7 @@
 
 ### 响应（HTTP 200）
 成功时 `data` 字段包含：
-- `assignmentId` (`string`) — 系统生成的唯一作业 ID
+- `assignmentId` (`int`) — 系统生成的唯一作业 ID
 - `fileName` (`string`) — 回显上传的文件名
 - `storedAt` (`string`) — 资源存储路径或文件 URL（可选）
 
@@ -59,7 +59,7 @@
   "code": 0,
   "message": "成功",
   "data": {
-    "assignmentId": "abcd1234",
+    "assignmentId": "12",
     "fileName": "homework1.jpg",
     "storedAt": "/files/abcd1234/homework1.jpg"
   }
@@ -74,7 +74,7 @@
 - **用途**：对指定 `assignmentId` 的上传文件执行 OCR，返回识别到的源代码文本 `recognizedCode`。**此接口必须能够接收图片上传（multipart/form-data）或使用已上传 assignmentId 对应的文件进行 OCR。**
 
 ### 路径参数
-- `assignmentId` (`string`) — 由上传接口返回的作业 ID。
+- `assignmentId` (`int`) — 由上传接口返回的作业 ID。
 
 ### 请求方式（任选其一）
 1. **通过 assignmentId 使用服务器已存文件（最常用）**  
@@ -117,7 +117,7 @@
 - **用途**：对提交的源代码（通过 `recognizedCode` 提供）进行编译并运行（支持超时时间、内存限制等配置），返回编译与运行的元数据与输出。
 
 ### 路径参数
-- `assignmentId` (`string`) — 作业 ID。
+- `assignmentId` (`int`) — 作业 ID。
 
 ### 请求 JSON 字段（**必填**）
 > 编译接口**必须**从请求体获取 `recognizedCode`（即 OCR 的识别结果）作为编译输入：
@@ -185,7 +185,7 @@
 - **用途**：触发评分流程（规则评分 + LLM 或其他评分器），生成结构化评分报告并写入数据库。**此接口要求请求体中提供 OCR 识别的 `recognizedCode` 与 `compileResult`（即编译并运行的返回结果）作为输入来源，以保证评分结果可复现与审计。**
 
 ### 路径参数
-- `assignmentId` (`string`) — 作业 ID。
+- `assignmentId` (`int`) — 作业 ID。
 
 ### 请求 JSON 字段（**必填**）
 - `recognizedCode` (`string`, 必填) — OCR 识别到的源代码文本（UTF-8）。
