@@ -3,7 +3,7 @@ import time
 from core.core_db.crud import score_crud, assignment_crud, image_process_crud
 from core.core_db.database import get_db
 from core.core_db.schemas import ScoreCreate, ScoreUpdate
-from src.AI_report import ai_no_josnDecoder, ai_run_reult
+from src.AI_report import ai_run_reult_no_jsonDecoder, ai_run_reult
 from fastapi import FastAPI, HTTPException, APIRouter
 from common.res.response import success_response, validation_error_response, service_error_response, ApiResponse
 
@@ -16,7 +16,7 @@ router = APIRouter()
 
 
 @router.post("/api/assignments/{assignmentId}/report")
-async def AI_api(assignmentId: str):
+async def AI_api(assignmentId: int):
     """ 进行HTTP参数绑定，前端 uri 请求数据 （作业ID）
                   根据 作业ID 查询数据库中的作业图片
               """
@@ -28,7 +28,7 @@ async def AI_api(assignmentId: str):
 
     try:
         # 参数校验：确保assignmentId有效
-        if not assignmentId or not isinstance(assignmentId, str):
+        if not assignmentId or not isinstance(assignmentId, int):
             return validation_error_response(message="作业ID无效")
 
         """ 根据作业ID查找数据库中作业的识别代码 """
@@ -47,7 +47,7 @@ async def AI_api(assignmentId: str):
         # print(f"{run_result}")
 
         """ 调用大模型进行评分，返回评分结果 """
-        results = ai_no_josnDecoder.ai(f"{perfect_code}")
+        results = ai_run_reult_no_jsonDecoder.ai(f"{perfect_code}", run_result)
         # results = ai_run_reult.ai(f"{perfect_code}",f"{run_result}")
         if results is None:
             return service_error_response(message="AI调用失败")

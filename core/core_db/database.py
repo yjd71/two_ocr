@@ -2,13 +2,20 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
+from config import DATABASE
 
 # 从环境变量获取数据库配置，并提供默认值
-DB_USER = os.getenv('DB_USER', 'postgres')
-DB_PASSWORD = os.getenv('DB_PASSWORD', '20030701')
-DB_HOST = os.getenv('DB_HOST', 'localhost')
-DB_PORT = os.getenv('DB_PORT', '5432')
-DB_NAME = os.getenv('DB_NAME', 'two_ocr')
+# DB_USER = os.getenv('DB_USER', 'postgres')
+# DB_PASSWORD = os.getenv('DB_PASSWORD', '20030701')
+# DB_HOST = os.getenv('DB_HOST', 'localhost')
+# DB_PORT = os.getenv('DB_PORT', '5432')
+# DB_NAME = os.getenv('DB_NAME', 'two_ocr')
+
+DB_USER = DATABASE['DB_USER']
+DB_PASSWORD = DATABASE['DB_PASSWORD']
+DB_HOST = DATABASE['DB_HOST']
+DB_PORT = DATABASE['DB_PORT']
+DB_NAME = DATABASE['DB_NAME']
 
 # 构建数据库URL
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
@@ -27,6 +34,7 @@ TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_eng
 
 Base = declarative_base()
 
+
 # 获取数据库会话的函数
 def get_db():
     db = SessionLocal()
@@ -34,6 +42,7 @@ def get_db():
         yield db
     finally:
         db.close()
+
 
 def get_test_db():
     db = TestSessionLocal()

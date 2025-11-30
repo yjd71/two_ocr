@@ -10,6 +10,7 @@ import aiofiles
 from core.core_db.crud import user_crud, assignment_crud
 from core.core_db.database import get_db
 from core.core_db.schemas import AssignmentCreate, AssignmentBase
+from config import img_upload_dir
 
 # 获取数据库会话
 db_generator = get_db()
@@ -66,7 +67,7 @@ async def ocr_api(file: Optional[UploadFile] = File(None)):
         safe_name = f"{assignment_path_id}{ext}"
 
         # 定义初始图片上传目录
-        upload_dir = Path("C:/IT/AI/OCR/two_ocr/uploads/original_image")
+        upload_dir = Path(img_upload_dir)
         upload_dir.mkdir(exist_ok=True)
 
         # 构建文件保存路径

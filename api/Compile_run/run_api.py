@@ -16,7 +16,7 @@ router = APIRouter()
 
 
 @router.post("/api/assignments/{assignmentId}/Compile_run")
-async def compile_run(assignmentId: str):
+async def compile_run(assignmentId: int):
     """ 进行HTTP参数绑定，前端 uri 请求数据 （作业ID）
                   根据 作业ID 查询数据库中的作业图片
               """
@@ -27,7 +27,7 @@ async def compile_run(assignmentId: str):
 
     try:
         # 参数校验：确保assignmentId有效
-        if not assignmentId or not isinstance(assignmentId, str):
+        if not assignmentId or not isinstance(assignmentId, int):
             return validation_error_response(message="作业ID无效")
 
         """ 根据作业ID，查询数据库的作业的识别代码 assignment.extracted_code  """

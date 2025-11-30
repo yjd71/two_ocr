@@ -1,3 +1,5 @@
+import time
+
 from transformers import AutoModel, AutoTokenizer
 import torch
 import os
@@ -5,6 +7,7 @@ import sys
 from io import StringIO
 # 从输出中提取OCR结果
 import re
+from core.core_llm.init_deepseek_ocr import global_models
 
 
 # 捕获标准输出
@@ -12,19 +15,12 @@ import re
 # sys.stdout = captured_output = StringIO()
 
 
-def deepseek_ocr():
-    os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+def deepseek_ocr(image_file, output_path):
+    # since = time.time()
+    model, tokenizer = global_models.get_ocr_model()
 
-    model_name = 'C:/IT/AI/OCR/huggingface_deepseek_ocr_model/DeepSeek-OCR'
-
-    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-    model = AutoModel.from_pretrained(model_name,
-                                      # _attn_implementation='flash_attention_2',
-                                      trust_remote_code=True,
-                                      use_safetensors=True)
-    model = model.eval().cuda().to(torch.bfloat16)
-
-    # prompt = "<image>\nFree OCR. " 输出了带有检测框信息的markdown格式结果
+    # prompt = "<image>\nFree OCR. "
+    # 输出了带有检测框信息的markdown格式结果
     # prompt = "<image>\n<|grounding|>Convert the document to markdown. "
 
     # 输出只有结果的格式
@@ -32,26 +28,12 @@ def deepseek_ocr():
     # prompts = "<image>\n<|grounding|>OCR the text exactly as it appears. Preserve all characters, spacing, and formatting without making any changes."
     # prompts = "<image>\n<|grounding|>识别图片中的内容"
 
-    # image_file = '../../Data/241042Y414/test1/a30463f8f8d2b2a4546a9b8f244c4361.jpg'
-    # image_file = '../../Data/zhangqikui/test1/IMG_20250928_222538.jpg'
-    image_file = r'C:\IT\AI\OCR\two_ocr\uploads\processed_image\test.jpg'
-
-    output_path = './output'
-
-    # infer(self, tokenizer, prompt='', image_file='', output_path = ' ', base_size = 1024, image_size = 640, crop_mode = True, test_compress = False, save_results = False):
-
-    # Tiny: base_size = 512, image_size = 512, crop_mode = False
-    # Small: base_size = 640, image_size = 640, crop_mode = False
-    # Base: base_size = 1024, image_size = 1024, crop_mode = False
-    # Large: base_size = 1280, image_size = 1280, crop_mode = False
-
-    # Gundam: base_size = 1024, image_size = 640, crop_mode = True
-
     res = model.infer(tokenizer,
                       prompt=prompts,
                       image_file=image_file,
                       output_path=output_path,
-                      save_results=True,
+                      save_results=False,
+                      eval_mode=True,  # eval_mode 的默认值为 false，因此无法获得任何结果。
                       # output_path=None,  # 不设置输出路径
                       # save_results=False,  # 不保存结果 ， 可获取返回值
                       base_size=1024,
@@ -59,33 +41,17 @@ def deepseek_ocr():
                       crop_mode=True,
                       test_compress=True
                       )
-
-
-# 推理结果会保存到./output目录中，而不会作为函数的返回值。所以需要获取捕获的输出
-# try:
-#     # 运行推理
-#     model.infer(
-#         tokenizer,
-#         prompt=prompts,
-#         image_file=image_file,
-#         output_path=output_path,
-#         base_size=1024,
-#         image_size=640,
-#         crop_mode=True,
-#         save_results=True,
-#         test_compress=True
-#         # output_path=None,  # 不设置输出路径
-#         # save_results=False,  # 不保存结果 ，
-#     )
-#
-#     # 获取捕获的输出
-#     output_text = captured_output.getvalue()
-#
-# finally:
-#     sys.stdout = old_stdout
-#
-# print("捕获的输出:")
-# print(output_text)
+    # final = time.time() - since
+    # print("最终时间: ", final)
+    # 匹配并移除第一行的特殊标记
+    cleaned_res = re.sub(r'^<\|ref\|>.*?<\|/det\|>\s*\n?', '', res, flags=re.MULTILINE)
+    # print(cleaned_res)
+    return cleaned_res
 
 if __name__ == '__main__':
-    deepseek_ocr()
+    # image_file = '../../Data/241042Y414/test1/a30463f8f8d2b2a4546a9b8f244c4361.jpg'
+    # image_file = '../../Data/zhangqikui/test1/IMG_20250928_222538.jpg'
+    image_file = r'C:\IT\AI\OCR\two_ocr\uploads\processed_image\test.jpg'
+    output_path = './output'
+
+    res = deepseek_ocr(image_file, output_path)

@@ -10,6 +10,7 @@ from fastapi import FastAPI, HTTPException, APIRouter
 from common.res.response import success_response, validation_error_response, service_error_response, ApiResponse
 from core.core_db.database import get_db, test_engine, Base
 from pathlib import Path
+from config import image_processed_path, app
 
 # 获取数据库会话
 db_generator = get_db()
@@ -20,7 +21,7 @@ router = APIRouter()
 
 
 @router.post("/api/assignments/{assignmentId}/ocr")
-async def ocr_api(assignmentId: str):
+async def ocr_api(assignmentId: int):
     """ 进行HTTP参数绑定，前端 uri 请求数据 （作业ID）
                   根据 作业ID 查询数据库中的作业图片
               """
@@ -35,7 +36,7 @@ async def ocr_api(assignmentId: str):
 
     try:
         # 参数校验：确保assignmentId有效
-        if not assignmentId or not isinstance(assignmentId, str):
+        if not assignmentId or not isinstance(assignmentId, int):
             return validation_error_response(message="作业ID无效")
 
         """ 根据作业ID，查询数据库的作业地址，获取作业图片 （where file_path == original_image_path） """
@@ -48,7 +49,7 @@ async def ocr_api(assignmentId: str):
         image = f"{assignment.original_image_path}"
         filename = os.path.splitext(os.path.basename(assignment.original_image_path))
         filename = f"{filename[0]}{filename[1]}"
-        save_dir = "C:/IT/AI/OCR/two_ocr/uploads/processed_image/"
+        save_dir = image_processed_path
         os.makedirs(save_dir, exist_ok=True)
         # 构建文件保存路径
         processed_image_path = save_dir + filename
@@ -60,7 +61,7 @@ async def ocr_api(assignmentId: str):
             res_img_path = processed_image_path.replace("\\", "/")
 
         # print(filename)  # 输出：uploads/original_image/IMG_20250928_220327.jpg
-        res_img_path = " http://127.0.0.1:8000/" + res_img_path
+        res_img_path = app['static_url_path'] + res_img_path
         # print("res_img_path: ", res_img_path)
 
         """ ocr识别 """
