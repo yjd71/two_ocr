@@ -306,9 +306,10 @@ def postprocess_code(code_str: str, verbose: bool = False) -> str:
 
 if __name__ == '__main__':
     image = '../../Data/zhangqikui/test1/IMG_20250928_222538.jpg'
-
+    image_id = './img_1.png'
     # 使用PaddleOCR识别 的结果，
-    results = paddle_ocr(image)
+    results = paddle_ocr(image_id)
+
     # #  保存识别结果的图片和json数据
     # for res in results:
     #     # res.print()
@@ -323,7 +324,7 @@ if __name__ == '__main__':
     print("=== 原始 OCR 字符串 ===")
     print(code_str)
 
-    # 后处理 OCR 识别出来的代码字符串，返回修正后的代码字符串。
-    corrected = postprocess_code(code_str, verbose=True)
-    print("\n=== 后处理后 ===")
-    print(corrected)
+    """ 后处理 OCR 识别出来的代码字符串，返回修正后的代码字符串。"""
+    # corrected = postprocess_code(code_str, verbose=True)
+    # print("\n=== 后处理后 ===")
+    # print(corrected)

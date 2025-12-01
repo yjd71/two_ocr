@@ -2,7 +2,7 @@ import time
 
 from core.core_db.crud import assignment_crud, image_process_crud
 from core.core_db.schemas import ImageProcessCreate, ImageProcessUpdate
-from src.Compile_run import run_api
+from src.Compile_run import run_code_wandbox_api
 from common.res.response import success_response, validation_error_response, service_error_response, ApiResponse
 
 from fastapi import Depends, APIRouter
@@ -38,18 +38,24 @@ async def compile_run(assignmentId: int,
             return validation_error_response(message="未找到对应的作业图片")
 
         """ Compile编译 """
-        """ 根据输入，判断文本是否符合规则，符合则true，不符合则false """
         success_code = assignment.extracted_code
-        # success_code = """#include <iostream>
-        #   using namespace std;
-        #   int main() {
-        #       cout << "Hello, World!" << endl;
-        #       return 0;
-        #   }
-        #   """
-        results = run_api.compile_run(success_code)
+        """
+            参数：
+              - code: 要执行的 C++ 源代码（字符串）
+              - compiler: 要使用的编译器标识（例如 "gcc-head", "clang-head" 等）
+              - timeout: 网络请求超时时间（秒）
+            返回：
+              - dict: Wandbox 返回的 JSON（已解析）
+        """
+        results = run_code_wandbox_api.compile_run(success_code, compiler="gcc-head", timeout=20)
         if results is None:
             return service_error_response(message="代码编译运行失败")
+
+        """
+        预留，等待修改编译运行的返回
+        """
+        results_data = results
+        # results_data = results_data["data"]
 
         """ 编译运行结果的入库 （根据uri传递的请求参数 作业ID 查询数据库，如果该作业存在，则更新作业，否则创建新作业）"""
         image_process = image_process_crud.get_image_process_by_assignment_id(db, assignmentId)
@@ -58,7 +64,7 @@ async def compile_run(assignmentId: int,
             image_process_data = ImageProcessCreate(
                 assignment_id=assignmentId,
                 process_step="compile_run",
-                confidence_score=results["data"]["score"],
+                confidence_score=results_data["score"],
                 process_result=results,
                 processed_at=time.time()
             )
@@ -66,7 +72,7 @@ async def compile_run(assignmentId: int,
         else:
             """ 查询数据库，该作业的编译结果存在，则更新编译结果 """
             image_process_update_data = ImageProcessUpdate(
-                confidence_score=float(results["data"]["score"]),
+                confidence_score=float(results_data["score"]),
                 process_result=results,
                 processed_at=time.time()
             )
@@ -74,14 +80,14 @@ async def compile_run(assignmentId: int,
 
         """ 响应, OCR 识别到的源代码文本 """
         # 返回成功响应
-        return success_response(data={"language": results["data"]["language"],
-                                      "codeLengthBytes": results["data"]["codeLengthBytes"],
-                                      "submitTime": results["data"]["submitTime"],
-                                      "evalTime": results["data"]["evalTime"],
-                                      "compileSuccess": results["data"]["compileSuccess"],
-                                      "output": results["data"]["output"],
-                                      "error": results["data"]["error"],
-                                      "score": results["data"]["score"],
+        return success_response(data={"language": results_data["language"],
+                                      "codeLengthBytes": results_data["codeLengthBytes"],
+                                      "submitTime": results_data["submitTime"],
+                                      "evalTime": results_data["evalTime"],
+                                      "compileSuccess": results_data["compileSuccess"],
+                                      "output": results_data["output"],
+                                      "error": results_data["error"],
+                                      "score": results_data["score"],
                                       })
 
     except ValueError as e:

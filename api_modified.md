@@ -139,7 +139,7 @@
 | `compileSuccess` | `boolean` | 编译是否成功。 |
 | `output` | `string` 或 `null` | 程序标准输出（若有）。 |
 | `error` | `string` 或 `null` | 编译或运行错误信息（若有）。 |
-| `score` | `int` | 编译阶段即时分（默认 0，最终分由评分流程覆盖）。 |
+| `score` | `int` | 编译运行得分 |
 
 #### 成功示例（编译并运行成功）
 ```json

@@ -44,27 +44,37 @@ async def AI_api(assignmentId: int,
         if image_process is None:
             return validation_error_response(message="未找到对应的作业图片的编译运行的结果")
         # 编译运行的结果
-        run_result = image_process.process_result
-        # print(f"{perfect_code}")
-        # print(f"{run_result}")
+        compile_run_result = image_process.process_result
+        """
+            预留，等待修改编译运行的返回
+        """
+        # compile_run_result = compile_run_result["data"]
 
         """ 调用大模型进行评分，返回评分结果 """
-        results = ai_run_reult_no_jsonDecoder.ai(f"{perfect_code}", run_result)
+        results = ai_run_reult_no_jsonDecoder.ai(f"{perfect_code}", compile_run_result)
         # results = ai_run_reult.ai(f"{perfect_code}",f"{run_result}")
         if results is None:
             return service_error_response(message="AI调用失败")
+
+        # """
+        # 服务器在处理请求时发生内部错误，错误类型为：
+        # 尝试将一个字典（dict）对象转换为浮点数（float）时失败。因为 float() 函数仅接受字符串或实数类型的参数，不能接收字典类型的数据，导致程序抛出异常。
+        # """
+        # compile_run_result["score"]
+        # results["score"]
 
         # 最终分数(规则评分和AI评分的加权融合)  final_score = rule_score × 0.35 + ai_score × 0.65
 
         """ 将 ai 输出结果保存在数据库中 （根据uri传递的请求参数 作业ID 查询数据库，如果该ai报告存在，则更新ai报告，否则创建新ai报告）"""
         score = score_crud.get_score_by_assignment_id(db, assignmentId)
+
         if score is None:
             """ ai报告保存到数据库中"""
             score_data = ScoreCreate(
                 assignment_id=assignmentId,
-                rule_score=results["score"],  # rule_score:基于规则评分得到的分数。
-                ai_score=results["score"],  # ai score:基于AI(DeepSeek)评分得到的分数。
-                final_score=results["score"],  # final_score:最终分数(规则评分和AI评分的加权融合)
+                rule_score=float(compile_run_result["score"]),  # rule_score:基于规则评分得到的分数。
+                ai_score=float(results["score"]),  # ai score:基于AI(DeepSeek)评分得到的分数。
+                final_score=0.35*float(compile_run_result["score"]) + 0.65*float(results["score"]),  # final_score:最终分数(规则评分和AI评分的加权融合)
                 score_details=results,
                 improvement_suggestions=results["suggestions"],
                 scored_at=time.time(),
@@ -73,9 +83,9 @@ async def AI_api(assignmentId: int,
         else:
             """ 查询数据库，该作业的ai报告存在，则更新ai报告 """
             score_update_data = ScoreUpdate(
-                rule_score=results["score"],  # rule_score:基于规则评分得到的分数。
-                ai_score=results["score"],  # ai score:基于AI(DeepSeek)评分得到的分数。
-                final_score=results["score"],  # final_score:最终分数(规则评分和AI评分的加权融合)
+                rule_score=float(compile_run_result["score"]),  # rule_score:基于规则评分得到的分数。
+                ai_score=float(results["score"]),    # ai score:基于AI(DeepSeek)评分得到的分数。
+                final_score=0.35*float(compile_run_result["score"]) + 0.65*float(results["score"]),  # final_score:最终分数(规则评分和AI评分的加权融合)
                 score_details=results,
                 improvement_suggestions=results["suggestions"],
                 scored_at=time.time(),
@@ -101,4 +111,4 @@ async def AI_api(assignmentId: int,
     except ValueError as e:
         return validation_error_response(message=str(e))
     except Exception as e:
-        return service_error_response(message="服务器内部错误"+str(e))
+        return service_error_response(message="服务器内部错误: "+str(e))

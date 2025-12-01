@@ -50,6 +50,11 @@ async def get_assignments_api(assignmentId: int,
         compile_score = float(compile_run_result.confidence_score)
         compile_processed_at = compile_run_result.processed_at
         compile_run_result = compile_run_result.process_result
+        """
+            预留，等待修改编译运行的返回
+        """
+        # compile_run_result = compile_run_result["data"]
+
 
         """ 根据作业ID查找数据库中AI报告的结果 """
         ai_report_result = score_crud.get_score_by_assignment_id(db, assignmentId)
@@ -74,13 +79,13 @@ async def get_assignments_api(assignmentId: int,
                 "recognizedCode": assignment.extracted_code
             },
             "compileResult": {
-                "language": compile_run_result["data"]["language"],
-                "codeLengthBytes": compile_run_result["data"]["codeLengthBytes"],
-                "submitTime": f'{compile_run_result["data"]["submitTime"]}',
-                "evalTime": f'{compile_run_result["data"]["evalTime"]}',
-                "compileSuccess": compile_run_result["data"]["compileSuccess"],
-                "output": f'{compile_run_result["data"]["output"]}',
-                "error": f'{compile_run_result["data"]["error"]}',
+                "language": compile_run_result["language"],
+                "codeLengthBytes": compile_run_result["codeLengthBytes"],
+                "submitTime": f'{compile_run_result["submitTime"]}',
+                "evalTime": f'{compile_run_result["evalTime"]}',
+                "compileSuccess": compile_run_result["compileSuccess"],
+                "output": f'{compile_run_result["output"]}',
+                "error": f'{compile_run_result["error"]}',
                 "score": compile_score,
                 "createdAt": f'{compile_processed_at}'
             },
@@ -106,4 +111,4 @@ async def get_assignments_api(assignmentId: int,
     except ValueError as e:
         return validation_error_response(message=str(e))
     except Exception as e:
-        return service_error_response(message="服务器内部错误" + str(e))
+        return service_error_response(message="服务器内部错误: " + str(e))
