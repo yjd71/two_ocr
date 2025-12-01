@@ -33,7 +33,7 @@ def deepseek_ocr():
 
     # image_file = '../../Data/241042Y414/test1/a30463f8f8d2b2a4546a9b8f244c4361.jpg'
     # image_file = '../../Data/zhangqikui/test1/IMG_20250928_222538.jpg'
-    image_file = r'C:\IT\AI\OCR\two_ocr\uploads\processed_image\test.jpg'
+    image_file = r'./20251201220009_504_33.jpg'
 
     output_path = './output'
 
@@ -49,8 +49,8 @@ def deepseek_ocr():
                       prompt=prompts,
                       image_file=image_file,
                       output_path=output_path,
-                      save_results=True,
-                      # eval_mode=True,
+                      save_results=False,
+                      eval_mode=True,
                       # output_path=None,  # 不设置输出路径
                       # save_results=False,  # 不保存结果 ， 可获取返回值
                       base_size=1024,

@@ -222,19 +222,17 @@
 
 ---
 
-# 4. 批量查看作业列表（Get assignment list）
-
-# 4. 批量查看作业列表（Get assignment list）- 通用模糊匹配版
+# 4. 批量查看作业列表（Get assignment list）- 多字段模糊匹配版
 
 - **方法 / 路径**：`GET /api/assignments`
-- **用途**：分页获取作业列表，支持通用模糊匹配查询（可匹配文件名、状态等），包括每个作业的简要信息。
+- **用途**：分页获取作业列表，支持多字段模糊匹配查询，包括每个作业的简要信息。
 
 ### 查询参数说明
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `page` | `int` | 否 | 页码，从1开始，默认1 |
 | `pageSize` | `int` | 否 | 每页数量，默认10，最大100 |
-| `key` | `string` | 否 | 通用模糊匹配关键词，可匹配多个字段 |
+| `likes` | `string[]` | 否 | 模糊匹配条件列表，格式为"字段名:匹配值"，支持对多个字段进行模糊匹配 |
 | `sortBy` | `string` | 否 | 排序字段：createdAt/score，默认createdAt |
 | `sortOrder` | `string` | 否 | 排序顺序：asc/desc，默认desc |
 
@@ -258,26 +256,33 @@
 | `pagination.totalPages` | `int` | 总页数 |
 
 ### 模糊匹配规则说明
-1. **通用匹配字段**：`key`参数支持同时对多个字段进行模糊匹配，包括：
+1. **字段匹配格式**：`likes`参数为字符串数组，每个元素格式为"字段名:匹配值"，例如：
+   - `fileName:homework` - 对文件名进行模糊匹配
+   - `status:已评分` - 对状态进行模糊匹配
+   - `fileName:作业&status:已评分` - 对多个字段进行匹配（多个条件使用&连接）
+
+2. **支持的字段名**：
    - `fileName` - 文件名
    - `status` - 状态
+   
+3. **匹配逻辑**：
    - 匹配不区分大小写
+   - 支持部分匹配，例如`fileName:home`会匹配"homework.jpg"、"Homework1.cpp"等
+   - 多个`likes`参数之间是"AND"关系，例如`likes=fileName:homework`和`likes=status:已评分`会返回同时满足两个条件的作业
+   - 单个`likes`参数内可以使用"&"连接多个字段条件，这些条件也是"AND"关系
+   - 如果`likes`参数为空或不提供，则不进行模糊匹配筛选
 
-2. **匹配逻辑**：
-   - 如果提供`key`参数，系统会在配置的多个字段中搜索包含该关键词的记录
-   - 支持部分匹配，例如`key=home`会匹配"homework.jpg"、"homework1.cpp"等
-   - 可以同时匹配中文和英文，例如`key=作业`会匹配文件名中包含"作业"的记录
-   - 如果`key`参数为空或不提供，则不进行模糊匹配筛选
-
-3. **状态说明**：`status`字段的可能值：
+4. **状态说明**：`status`字段的值：
    - `上传成功` - 作业文件已成功上传
    - `识别成功` - OCR识别完成并成功获取代码
    - `识别失败` - OCR识别失败
    - `编译成功` - 代码编译成功
    - `编译失败` - 代码编译失败
-   - `评分成功` - 评分完成
+   - `已评分` - 评分完成
+   - `评分失败` - 评分失败
 
-4. **排序规则**：
+
+5. **排序规则**：
    - 按`score`排序时，无评分的作业（score为null）会排在最后
    - 按`createdAt`排序时，默认按创建时间倒序排列（最新的在前）
 
@@ -291,6 +296,7 @@
       {
         "assignmentId": 1,
         "fileName": "homework1.jpg",
+        "storedAt": "/files/abcd1234/homework1.jpg",
         "status": "已评分",
         "score": 80,
         "createdAt": "2025-10-24 21:39:50",
@@ -307,8 +313,7 @@
       {
         "assignmentId": 3,
         "fileName": "hw3_solution.png",
-        "storedAt": "/files/ijkl9012/hw3_solution.png",
-        "status": "识别中",
+        "status": "识别成功",
         "score": null,
         "createdAt": "2025-10-25 10:20:15",
         "updatedAt": "2025-10-25 10:20:15"
@@ -332,6 +337,32 @@
   "data": null
 }
 ```
+
+### 使用场景示例
+1. **单字段模糊匹配**：`GET /api/assignments?likes=fileName:homework` - 搜索文件名包含"homework"的作业
+2. **多字段组合匹配**：`GET /api/assignments?likes=fileName:homework&likes=status:已评分` - 搜索文件名包含"homework"且状态为"已评分"的作业
+3. **复杂条件匹配**：`GET /api/assignments?likes=fileName:作业&status:成功` - 搜索文件名包含"作业"且状态包含"成功"的作业
+4. **按分数排序**：`GET /api/assignments?sortBy=score&sortOrder=desc` - 按分数从高到低排序
+5. **分页查看**：`GET /api/assignments?page=2&pageSize=20` - 查看第2页，每页20条
+6. **组合查询**：`GET /api/assignments?likes=fileName:hw&page=1&pageSize=15&sortBy=createdAt&sortOrder=desc` - 搜索文件名包含"hw"的作业，按创建时间倒序排列，第一页显示15条
+
+### URL编码示例
+由于`likes`参数可能包含特殊字符，需要进行URL编码：
+```
+GET /api/assignments?likes=fileName%3Ahomework%20solution&likes=status%3A已评分
+```
+解码后：
+- `fileName:homework solution` - 匹配文件名包含"homework solution"
+- `status:已评分` - 匹配状态为"已评分"
+
+### 接口性能建议
+1. **模糊匹配优化**：建议对常用搜索字段（如`fileName`）建立全文索引以提高模糊查询性能
+2. **分页限制**：`pageSize`最大限制为100，防止一次查询返回过多数据
+3. **缓存策略**：可以考虑对频繁查询的结果进行缓存，特别是排序和分页查询
+4. **异步处理**：当查询条件复杂且数据量大时，可以考虑异步查询并返回任务ID
+5. **搜索建议**：可以配合实现搜索建议功能，根据用户输入的关键词提供匹配建议
+
+此接口使用`likes`数组参数支持多字段模糊匹配，提供了灵活的查询能力。用户可以通过多个条件组合进行精确搜索，同时保持了原有的分页、排序功能，增强了作业管理系统的查询灵活性。
 
 ### 使用场景示例
 1. **搜索特定关键词**：`GET /api/assignments?key=homework` - 搜索包含"homework"的作业（可匹配文件名或状态）

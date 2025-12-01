@@ -1,114 +1,143 @@
 import os
+import logging
+from typing import Dict, Any, Optional
 
-from core.core_db.crud import score_crud, assignment_crud, image_process_crud
-from common.res.response import success_response, validation_error_response, service_error_response, ApiResponse
-
-from fastapi import Depends, APIRouter
-from sqlalchemy.orm import Session  # 导入 Session 类型
+from fastapi import Depends, APIRouter, Path
+from sqlalchemy.orm import Session
 from core.core_db.database import get_db
+# 引入数据库模型
+from core.core_db.models import Assignment, ImageProcess, Score
+from common.res.response import success_response, validation_error_response, service_error_response
 
-# 创建路由实例，添加API前缀和标签
+# 设置日志
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 
 @router.get("/api/assignments/{assignmentId}")
-async def get_assignments_api(assignmentId: int,
-                              db: Session = Depends(get_db)  # ✅通过依赖注入获取每个请求独立的 db 会话
-                              ):
-    """ 进行HTTP参数绑定，前端 uri 请求数据 （作业ID）
-                  根据 作业ID 查询数据库中的作业图片
-              """
+async def get_assignments_detail_api(
+        assignment_id: int = Path(..., alias="assignmentId", description="作业ID"),
+        db: Session = Depends(get_db)
+):
     """
-        :param assignmentId: 作业ID，由前端提供
-        :return: 包含作业结果的响应
+    获取单个作业的详情信息
+    策略：查询主表，若存在则尝试查询关联表。如果关联表数据缺失，则返回 None，不阻断请求。
     """
-
     try:
-        # 参数校验：确保assignmentId有效
-        if not assignmentId or not isinstance(assignmentId, int):
-            return validation_error_response(message="作业ID无效")
-
-        """ 根据作业ID查找数据库中作业的识别代码 """
-        assignment = assignment_crud.get_assignment(db, assignmentId)
-        if assignment is None:
-            return validation_error_response(message="未找到对应的作业图片")
-
-        # 拿到图片路径的中的图片名称
-        filename = os.path.splitext(os.path.basename(assignment.original_image_path))
-        filename = f"{filename[0]}{filename[1]}"
-
-        """ 根据作业ID查找数据库中编译运行的结果 """
-        compile_run_result = image_process_crud.get_image_process_by_assignment_id(db, assignmentId)
-        if compile_run_result is None:
-            return validation_error_response(message="未找到对应的作业的编译运行的结果")
-
-        # ✅ 修正 1：提取 ORM 属性
+        # ==========================================
+        # 1. 数据库查询：获取作业主表信息 (必填)
+        # ==========================================
         """
-         Decimal 类型来源： Python 数据库ORM中，用于存储精确浮点数的字段，会被映射为 Python 标准库中的 decimal.Decimal 类型，
-         而不是内置的 float 类型。标准的 JSON 库 不支持 Decimal 对象, 将其显式地转换为 JSON 兼容的类型，即 float（浮点数）或 str（字符串）。
+        db.query(Assignment): 创建一个针对 Assignment 模型的查询对象。
+        .filter(Assignment.id == assignment_id): 添加 WHERE 条件，相当于 WHERE id = assignment_id。
+        .first(): 执行查询并返回第一条匹配的记录。如果未找到，返回 None。
         """
-        compile_score = float(compile_run_result.confidence_score)
-        compile_processed_at = compile_run_result.processed_at
-        compile_run_result = compile_run_result.process_result
-        """
-            预留，等待修改编译运行的返回
-        """
-        # compile_run_result = compile_run_result["data"]
+        assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
 
+        if not assignment:
+            return validation_error_response(message="未找到对应的作业数据")
 
-        """ 根据作业ID查找数据库中AI报告的结果 """
-        ai_report_result = score_crud.get_score_by_assignment_id(db, assignmentId)
-        if ai_report_result is None:
-            return validation_error_response(message="未找到对应的作业图片的AI报告的结果")
+        # ==========================================
+        # 2. 数据库查询与处理：编译运行结果 (可选)
+        # ==========================================
         """
-                Decimal 类型来源： Python 数据库ORM中，用于存储精确浮点数的字段，会被映射为 Python 标准库中的 decimal.Decimal 类型，
-                而不是内置的 float 类型。标准的 JSON 库 不支持 Decimal 对象, 将其显式地转换为 JSON 兼容的类型，即 float（浮点数）或 str（字符串）。
-               """
-        final_score = float(ai_report_result.final_score)
-        scored_at = ai_report_result.scored_at
-        ai_report_result = ai_report_result.score_details
+            查询 ImageProcess 表，查找外键 assignment_id 等于当前作业 ID 的记录。
+        """
+        image_process = db.query(ImageProcess).filter(
+            ImageProcess.assignment_id == assignment_id
+        ).first()
 
-        # 响应
-        return success_response(data={
+        # 初始化编译结果响应为 None
+        compile_result_response = None
+
+        # 只有当查询到记录时，才进行数据处理
+        if image_process:
+            # 2.1 数据清洗
+            compile_data = image_process.process_result if image_process.process_result else {}
+            compile_confidence = float(
+                image_process.confidence_score) if image_process.confidence_score is not None else 0.0
+
+            # 2.2 构建编译部分响应
+            compile_result_response = {
+                "language": compile_data.get("language", "cpp"),
+                "codeLengthBytes": compile_data.get("codeLengthBytes", 0),
+                "submitTime": str(compile_data.get("submitTime", "")),
+                "evalTime": str(compile_data.get("evalTime", "")),
+                "compileSuccess": compile_data.get("compileSuccess", False),
+                "output": str(compile_data.get("output", "")),
+                "error": str(compile_data.get("error", "")),
+                "score": compile_confidence,
+                "createdAt": str(image_process.processed_at)
+            }
+
+        # ==========================================
+        # 3. 数据库查询与处理：AI 评分报告 (可选)
+        # ==========================================
+        """
+        查询 Score 表，查找外键 assignment_id 等于当前作业 ID 的记录。
+        """
+        score_record = db.query(Score).filter(
+            Score.assignment_id == assignment_id
+        ).first()
+
+        # 初始化评分报告响应为 None
+        report_response = None
+
+        # 只有当查询到记录时，才进行数据处理
+        if score_record:
+            # 3.1 数据清洗
+            ai_score = float(score_record.ai_score) if score_record.ai_score is not None else 0.0
+            ai_details = score_record.score_details if score_record.score_details else {}
+            breakdown = ai_details.get("breakdown", {})
+
+            # 3.2 构建评分部分响应
+            report_response = {
+                "assignmentId": assignment.id,
+                "score": ai_score,
+                "breakdown": {
+                    "correctness": float(breakdown.get("correctness", 0)),
+                    "standardization": float(breakdown.get("standardization", 0)),
+                    "efficiency": float(breakdown.get("efficiency", 0)),
+                    "readability": float(breakdown.get("readability", 0)),
+                },
+                "reason": ai_details.get("reason", ""),
+                "suggestions": ai_details.get("suggestions", []),
+                "strengths": ai_details.get("strengths", []),
+                "weaknesses": ai_details.get("weaknesses", []),
+                "generatedAt": str(score_record.scored_at)
+            }
+
+        # ==========================================
+        # 4. 构建最终响应结构
+        # ==========================================
+
+        # 处理文件名
+        original_filename = os.path.basename(
+            assignment.original_image_path) if assignment.original_image_path else "unknown.jpg"
+
+        response_data = {
             "assignmentId": assignment.id,
-            "fileName": filename,
+            "fileName": original_filename,
             "storedAt": assignment.original_image_path,
-            "createdAt": f'{assignment.uploaded_at}',
-            "updatedAt": f'{assignment.processed_at}',
+            "createdAt": str(assignment.uploaded_at),
+            "updatedAt": str(assignment.processed_at),
+
             "ocrResult": {
                 "recognizedCode": assignment.extracted_code
             },
-            "compileResult": {
-                "language": compile_run_result["language"],
-                "codeLengthBytes": compile_run_result["codeLengthBytes"],
-                "submitTime": f'{compile_run_result["submitTime"]}',
-                "evalTime": f'{compile_run_result["evalTime"]}',
-                "compileSuccess": compile_run_result["compileSuccess"],
-                "output": f'{compile_run_result["output"]}',
-                "error": f'{compile_run_result["error"]}',
-                "score": compile_score,
-                "createdAt": f'{compile_processed_at}'
-            },
-            "report": {
-                "assignmentId": assignment.id,
-                "score": final_score,  # 得分
-                "breakdown": {
-                    "correctness": float(ai_report_result["breakdown"]["correctness"]),
-                    "standardization": float(ai_report_result["breakdown"]["standardization"]),
-                    "efficiency": float(ai_report_result["breakdown"]["efficiency"]),
-                    "readability": float(ai_report_result["breakdown"]["readability"]),
-                },  # 分项得分
-                "reason": ai_report_result["reason"],  # 评分建议
-                "suggestions": ai_report_result["suggestions"],  # 改进建议
-                "strengths": ai_report_result["strengths"],  # 优点
-                "weaknesses": ai_report_result["weaknesses"],  # 缺点
-                "generatedAt": f'{scored_at}'
-            }
-        })
 
+            # 如果上面没查到，这里就是 None (JSON 中的 null)，前端需据此判断显示状态
+            "compileResult": compile_result_response,
+            "report": report_response
+        }
 
+        return success_response(data=response_data)
 
     except ValueError as e:
-        return validation_error_response(message=str(e))
+        logger.error(f"数据类型转换错误: {e}")
+        # 这里改用 service_error 比较好，因为通过了数据库校验，说明是后端数据脏了，不是用户传参错误
+        return service_error_response(message="后端数据处理异常")
     except Exception as e:
-        return service_error_response(message="服务器内部错误: " + str(e))
+        logger.error(f"获取作业详情失败: {e}", exc_info=True)
+        return service_error_response(message=f"服务器内部错误: {str(e)}")

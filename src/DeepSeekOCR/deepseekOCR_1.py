@@ -28,6 +28,14 @@ def deepseek_ocr(image_file, output_path):
     # prompts = "<image>\n<|grounding|>OCR the text exactly as it appears. Preserve all characters, spacing, and formatting without making any changes."
     # prompts = "<image>\n<|grounding|>识别图片中的内容"
 
+    # Tiny: base_size = 512, image_size = 512, crop_mode = False
+    # Small: base_size = 640, image_size = 640, crop_mode = False
+    # Base: base_size = 1024, image_size = 1024, crop_mode = False
+    # Large: base_size = 1280, image_size = 1280, crop_mode = False
+    # Gundam: base_size = 1024, image_size = 640, crop_mode = True
+    """
+        Gundam:动态调整模型大小，当运行程序的时候，程序占用内存过大，模型动态调整大小，调成小模型，效果不会
+    """
     res = model.infer(tokenizer,
                       prompt=prompts,
                       image_file=image_file,
@@ -36,9 +44,9 @@ def deepseek_ocr(image_file, output_path):
                       eval_mode=True,  # eval_mode 的默认值为 false，因此无法获得任何结果。
                       # output_path=None,  # 不设置输出路径
                       # save_results=False,  # 不保存结果 ， 可获取返回值
-                      base_size=1024,
-                      image_size=640,
-                      crop_mode=True,
+                      base_size=1280,
+                      image_size=1280,
+                      crop_mode=False,
                       test_compress=True
                       )
     # final = time.time() - since

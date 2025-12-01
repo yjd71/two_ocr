@@ -1,3 +1,5 @@
+import logging
+
 from common.res.response import success_response, validation_error_response, service_error_response, ApiResponse
 
 from fastapi import UploadFile, File, Form
@@ -14,6 +16,9 @@ from config import img_upload_dir
 from fastapi import Depends, APIRouter
 from sqlalchemy.orm import Session  # 导入 Session 类型
 from core.core_db.database import get_db
+
+# 设置日志
+logger = logging.getLogger(__name__)
 
 # 创建路由实例，添加API前缀和标签
 router = APIRouter()
@@ -88,6 +93,7 @@ async def ocr_api(file: Optional[UploadFile] = File(None),
             """ 存储图片到数据库中（ file_path -> original_image_path） """
             assignment_data = AssignmentCreate(
                 original_image_path=f"{file_path}",
+                status="上传成功",
                 user_id=1,
             )
             created_assignment = assignment_crud.create_assignment(db, assignment_data)
@@ -111,6 +117,9 @@ async def ocr_api(file: Optional[UploadFile] = File(None),
         return validation_error_response(message=str(e))
 
     except Exception as e:
-        # 非预期错误，记录日志（假设有logger）
-        # logger.exception(e)
+        # 如果发生异常，应该回滚事务以防止数据库会话被污染。
+        # db.rollback() # 生产环境中，如果异常发生在 db.commit() 之前，应添加 db.rollback()
+        # 发生未知异常时，必须进行回滚操作，释放数据库锁并恢复会话状态
+        db.rollback()
+        logger.error(f"上传接口发生异常: {str(e)}", exc_info=True)
         return service_error_response(message=str("请求服务器错误" + str(e)))

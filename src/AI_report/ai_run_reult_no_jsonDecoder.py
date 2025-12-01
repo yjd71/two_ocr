@@ -3,6 +3,9 @@ import json
 import logging
 from typing import Dict, Any, Optional
 from tenacity import retry, stop_after_attempt, wait_exponential
+import json
+import logging
+import json_repair # 专门用于修复 LLM（大模型）生成的损坏 JSON 的库。它可以自动处理缺失的逗号、未转义的引号等问题。
 
 # 设置日志
 logging.basicConfig(level=logging.INFO)
@@ -136,30 +139,36 @@ score=correctness*60%+standardization*20%+efficiency*10%+readability*10%
 
     def _extract_json_from_response(self, content: str) -> dict:
         """
-        从API响应中提取JSON数据
-
-        Args:
-            content: API返回的内容
-
-        Returns:
-            解析后的JSON字典
+        从API响应中提取JSON数据 - 增强版
         """
-        # 尝试从代码块中提取JSON
+        json_str = content
+
+        # 1. 尝试提取 Markdown 代码块中的内容
         if "```json" in content:
             json_start = content.find("```json") + 7
             json_end = content.find("```", json_start)
             json_str = content[json_start:json_end].strip()
+        elif "```" in content:  # 有时候模型只写 ``` 没有 json 标记
+            json_start = content.find("```") + 3
+            json_end = content.find("```", json_start)
+            json_str = content[json_start:json_end].strip()
         elif "{" in content and "}" in content:
-            # 尝试提取大括号内的JSON
             json_start = content.find("{")
             json_end = content.rfind("}") + 1
             json_str = content[json_start:json_end]
-        else:
-            # 如果没有明显的JSON标记，使用整个内容
-            json_str = content
 
-        # 解析JSON
-        return json.loads(json_str)
+        # 2. 解析 JSON
+        try:
+            # 优先使用 json_repair 专门用于修复 LLM（大模型）生成的损坏 JSON 的库。它可以自动处理缺失的逗号、未转义的引号等问题。
+            if json_repair:
+                return json_repair.loads(json_str)
+            else:
+                # 备用方案：标准库解析（容易报错）
+                return json.loads(json_str)
+        except Exception as e:
+            # 3. 如果解析失败，打印原始内容以便调试
+            logger.error(f"JSON解析失败. 原始内容:\n{json_str}")
+            raise e  # 抛出异常让上层捕获
 
 
 # 使用示例
