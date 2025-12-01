@@ -1,25 +1,24 @@
-import logging
 import os
-import time
 
 from core.core_db.crud import assignment_crud
-from core.core_db.schemas import AssignmentCreate, AssignmentUpdate
-from src.PaddleOCR import ocr_v2
-from common.res.response import success_response, validation_error_response, service_error_response, ApiResponse
+from core.core_db.schemas import AssignmentUpdate
+from src.DeepSeekOCR.deepseekOCR_1 import deepseek_ocr
+import time
+from datetime import datetime  # <--- 1. 修改导入
+
+from core.core_db.models import Assignment
+from common.res.response import success_response, validation_error_response, service_error_response
 from config import image_processed_path, app
 
 from fastapi import Depends, APIRouter
 from sqlalchemy.orm import Session  # 导入 Session 类型
 from core.core_db.database import get_db
 
-# 设置日志
-logger = logging.getLogger(__name__)
-
 # 创建路由实例，添加API前缀和标签
 router = APIRouter()
 
 
-@router.post("/api/assignments/{assignmentId}/ocr")
+@router.post("/api/assignments/{assignmentId}/deepseek_ocr")
 async def ocr_api(assignmentId: int,
                   db: Session = Depends(get_db)  # ✅通过依赖注入获取每个请求独立的 db 会话
                   ):
@@ -60,47 +59,37 @@ async def ocr_api(assignmentId: int,
             res_img_path = "uploads" + processed_image_path.split("uploads")[1].replace("\\", "/")
         else:
             res_img_path = processed_image_path.replace("\\", "/")
-
+        # print(filename)  # 输出：uploads/original_image/IMG_20250928_220327.jpg
         res_img_path = app['static_url_path'] + res_img_path
 
+        output_path = './output'
         """ ocr识别 """
-        # 使用PaddleOCR识别 的结果
-        results = ocr_v2.paddle_ocr(image, processed_image_path)
-        """ 如果该识别存在，则更新作业，状态更新为：识别失败）"""
-        if results is None:
-            assignment_data = AssignmentUpdate(
-                status="识别失败",
-                processed_image_path=f"{processed_image_path}",
-                processed_at=time.time(),
-            )
-            assignment_crud.update_assignment(db, assignmentId, assignment_data)
+        res = deepseek_ocr(image, output_path)
+        if res is None:
+            """ 更新状态 """
+            assignment_crud.update_assignment(db, assignmentId, AssignmentUpdate(status="识别失败", processed_at=time.time()))
             return service_error_response(message="OCR处理失败")
 
-        """ 把 OCR 的 rec_texts（字符串列表）拼成一个包含换行符的源代码字符串。在内存中执行 OCR 并直接返回拼接好的源代码字符串（不写文件）。"""
-        corrected = ocr_v2.ocr_recognition_return_string(results)
-
-        """ 后处理 OCR 识别出来的代码字符串，返回修正后的代码字符串。"""
-        # corrected = ocr_v2.postprocess_code(corrected, verbose=True)
-
-        """ ocr识别结果的源代码字符串后处理后入库 """
+        """ ocr识别结果的源代码字符串后处理后入库 （根据uri传递的请求参数 作业ID 查询数据库，如果该作业存在，则更新作业，否则创建新作业）"""
         assignment_data = AssignmentUpdate(
             status="识别成功",
-            processed_image_path=f"{processed_image_path}",
-            extracted_code=corrected,
+            processed_image_path="",
+            extracted_code=res,
             processed_at=time.time(),
         )
         assignment_crud.update_assignment(db, assignmentId, assignment_data)
-
         """ 响应, OCR 识别到的源代码文本 """
-        return success_response(data={"recognizedCode": f"{corrected}",
-                                      "processed_image_path": f"{res_img_path}",
-                                      "res_image_path": f"{res_img_path}"
+        # 返回成功响应
+        return success_response(data={"recognizedCode": f"{res}",
+                                      "processed_image_path": "",
+                                      "res_image_path": ""
                                       })
 
+    except ValueError as e:
+        return validation_error_response(message=str(e))
     except Exception as e:
-        # 如果发生异常，应该回滚事务以防止数据库会话被污染。
-        # db.rollback() # 生产环境中，如果异常发生在 db.commit() 之前，应添加 db.rollback()
-        # 发生未知异常时，必须进行回滚操作，释放数据库锁并恢复会话状态
-        db.rollback()
-        logger.error(f"ocr识别接口发生异常: {str(e)}", exc_info=True)
         return service_error_response(message=str("请求服务器错误" + str(e)))
+
+
+
+

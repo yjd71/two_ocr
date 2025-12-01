@@ -1,114 +1,192 @@
-import time
+import json
+import logging
+from datetime import datetime
+from typing import Dict, Any, Optional
 
-from core.core_db.crud import score_crud, assignment_crud, image_process_crud
-from core.core_db.database import get_db
-from core.core_db.schemas import ScoreCreate, ScoreUpdate
-from src.AI_report import ai_run_reult_no_jsonDecoder, ai_run_reult
-from fastapi import FastAPI, HTTPException, APIRouter
-from common.res.response import success_response, validation_error_response, service_error_response, ApiResponse
+from fastapi import APIRouter, Depends, Path
+from sqlalchemy.orm import Session  # 导入 SQLAlchemy 的 Session，用于数据库会话管理
 
-from fastapi import Depends, APIRouter
-from sqlalchemy.orm import Session  # 导入 Session 类型
-from core.core_db.database import get_db
+from common.res.response import success_response, validation_error_response, service_error_response
+from core.core_db.database import get_db  # 导入获取数据库 Session 的依赖函数
+from core.core_db.models import Assignment, Score, ImageProcess  # 导入 ORM 模型
+from src.AI_report import ai_run_reult_no_jsonDecoder
 
-# 创建路由实例，添加API前缀和标签
+# 设置日志
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
+# 定义评分权重常量
+WEIGHT_RULE = 0.15  # 规则评分权重
+WEIGHT_AI = 0.85  # AI评分权重
 
-@router.post("/api/assignments/{assignmentId}/report")
-async def AI_api(assignmentId: int,
-                 db: Session = Depends(get_db)  # ✅通过依赖注入获取每个请求独立的 db 会话
-                 ):
-    """ 进行HTTP参数绑定，前端 uri 请求数据 （作业ID）
-                  根据 作业ID 查询数据库中的作业图片
-              """
+
+@router.post("/api/assignments/{assignment_id}/report")
+async def generate_ai_report(
+        assignment_id: int = Path(..., description="作业ID"),
+        # 依赖注入：获取独立的数据库 Session 对象
+        db: Session = Depends(get_db)
+):
     """
-  
-        :param assignmentId: 作业ID，由前端提供
-        :return: 包含OCR识别结果的响应
-        """
+    生成AI评分报告接口。
 
+    该接口负责协调数据获取、AI服务调用、分数计算以及数据库的存取和更新。
+    """
     try:
-        # 参数校验：确保assignmentId有效
-        if not assignmentId or not isinstance(assignmentId, int):
-            return validation_error_response(message="作业ID无效")
+        # =======================
+        # 1. 数据准备与校验
+        # =======================
 
-        """ 根据作业ID查找数据库中作业的识别代码 """
-        assignment = assignment_crud.get_assignment(db, assignmentId)
-        if assignment is None:
-            return validation_error_response(message="未找到对应的作业图片")
-        # 识别代码
-        perfect_code = assignment.extracted_code
-        """ 根据作业ID查找数据库中作业的编译运行的结果 """
-        image_process = image_process_crud.get_image_process_by_assignment_id(db, assignmentId)
-        if image_process is None:
-            return validation_error_response(message="未找到对应的作业图片的编译运行的结果")
-        # 编译运行的结果
-        compile_run_result = image_process.process_result
-        """
-            预留，等待修改编译运行的返回
-        """
-        # compile_run_result = compile_run_result["data"]
+        # 1.1 查询作业信息
+        # db.query(Assignment)：构建针对 Assignment 表的查询
+        # .filter(Assignment.id == assignment_id)：添加过滤条件
+        # .first()：执行查询并获取第一条匹配记录（一个 ORM 对象）
+        assignment: Optional[Assignment] = db.query(Assignment).filter(Assignment.id == assignment_id).first()
+        if not assignment:
+            return validation_error_response(message="未找到对应的作业数据")
 
-        """ 调用大模型进行评分，返回评分结果 """
-        results = ai_run_reult_no_jsonDecoder.ai(f"{perfect_code}", compile_run_result)
-        # results = ai_run_reult.ai(f"{perfect_code}",f"{run_result}")
-        if results is None:
-            return service_error_response(message="AI调用失败")
+        if not assignment.extracted_code:
+            return validation_error_response(message="该作业尚未完成OCR识别，无法评分")
 
-        # """
-        # 服务器在处理请求时发生内部错误，错误类型为：
-        # 尝试将一个字典（dict）对象转换为浮点数（float）时失败。因为 float() 函数仅接受字符串或实数类型的参数，不能接收字典类型的数据，导致程序抛出异常。
-        # """
-        # compile_run_result["score"]
-        # results["score"]
+        # 1.2 查询编译运行结果 (ImageProcess 表)
+        # 查找与当前 Assignment 关联的 ImageProcess 记录
+        image_process: Optional[ImageProcess] = db.query(ImageProcess).filter(
+            ImageProcess.assignment_id == assignment_id).first()
+        if not image_process:
+            return validation_error_response(message="未找到编译运行结果，请先进行编译检查")
 
-        # 最终分数(规则评分和AI评分的加权融合)  final_score = rule_score × 0.35 + ai_score × 0.65
+        # 1.3 解析编译结果
+        compile_result_data = _parse_compile_result(image_process.process_result)
 
-        """ 将 ai 输出结果保存在数据库中 （根据uri传递的请求参数 作业ID 查询数据库，如果该ai报告存在，则更新ai报告，否则创建新ai报告）"""
-        score = score_crud.get_score_by_assignment_id(db, assignmentId)
+        # 获取规则评分
+        rule_score = float(compile_result_data.get("score", 0))
 
-        if score is None:
-            """ ai报告保存到数据库中"""
-            score_data = ScoreCreate(
-                assignment_id=assignmentId,
-                rule_score=float(compile_run_result["score"]),  # rule_score:基于规则评分得到的分数。
-                ai_score=float(results["score"]),  # ai score:基于AI(DeepSeek)评分得到的分数。
-                final_score=0.35*float(compile_run_result["score"]) + 0.65*float(results["score"]),  # final_score:最终分数(规则评分和AI评分的加权融合)
-                score_details=results,
-                improvement_suggestions=results["suggestions"],
-                scored_at=time.time(),
-            )
-            score_crud.create_score(db, score_data)
+        # =======================
+        # 2. 调用 AI 服务
+        # =======================
+        logger.info(f"开始调用AI服务，AssignmentID: {assignment_id}")
+
+        # 调用外部 AI 模块进行分析
+        ai_result = ai_run_reult_no_jsonDecoder.ai(
+            perfect_code=assignment.extracted_code,
+            run_result=compile_result_data
+        )
+
+        # 2.1 AI 调用失败处理
+        if not ai_result or ai_result.get("score") is None:
+            # AI 调用失败，更新 Assignment 状态为“评分失败”
+            assignment.status = "评分失败"
+            assignment.processed_at = datetime.now()
+            # 提交事务：将 Assignment 状态的变更持久化到数据库
+            db.commit()
+            return service_error_response(message="AI服务调用失败或返回数据异常")
+
+        # =======================
+        # 3. 分数计算与数据处理
+        # =======================
+        try:
+            ai_score_val = float(ai_result["score"])
+
+            # 计算加权总分
+            final_score = (rule_score * WEIGHT_RULE) + (ai_score_val * WEIGHT_AI)
+            final_score = round(final_score, 1)
+
+            # 提取 AI 结果中的详情和建议
+            breakdown = ai_result.get("breakdown", {})
+            suggestions = ai_result.get("suggestions", [])
+
+        except (ValueError, TypeError) as e:
+            logger.error(f"分数计算数据类型错误: {e}")
+            return service_error_response(message="评分数据解析错误")
+
+        # =======================
+        # 4. 数据库更新 (事务处理)
+        # =======================
+
+        # 4.1 查询是否已存在评分记录 (用于判断是创建还是更新)
+        # 查询 Score 表中是否存在与该作业关联的记录
+        existing_score: Optional[Score] = db.query(Score).filter(Score.assignment_id == assignment_id).first()
+
+        current_time = datetime.now()
+
+        if existing_score:
+            # --- 更新现有记录 (UPDATE) ---
+            # 如果存在，直接修改 Score ORM 对象的属性
+            existing_score.rule_score = rule_score
+            existing_score.ai_score = ai_score_val
+            existing_score.final_score = final_score
+            existing_score.score_details = ai_result  # 存储完整的 AI 返回数据
+            existing_score.improvement_suggestions = suggestions
+            existing_score.scored_at = current_time
         else:
-            """ 查询数据库，该作业的ai报告存在，则更新ai报告 """
-            score_update_data = ScoreUpdate(
-                rule_score=float(compile_run_result["score"]),  # rule_score:基于规则评分得到的分数。
-                ai_score=float(results["score"]),    # ai score:基于AI(DeepSeek)评分得到的分数。
-                final_score=0.35*float(compile_run_result["score"]) + 0.65*float(results["score"]),  # final_score:最终分数(规则评分和AI评分的加权融合)
-                score_details=results,
-                improvement_suggestions=results["suggestions"],
-                scored_at=time.time(),
+            # --- 创建新记录 (INSERT) ---
+            # 如果不存在，创建新的 Score ORM 实例
+            new_score = Score(
+                assignment_id=assignment_id,
+                rule_score=rule_score,
+                ai_score=ai_score_val,
+                final_score=final_score,
+                score_details=ai_result,
+                improvement_suggestions=suggestions,
+                scored_at=current_time
             )
-            score_crud.update_score(db, assignmentId, score_update_data)
+            # db.add()：将新创建的 ORM 对象添加到 Session 中，标记为待插入
+            db.add(new_score)
 
-        # 返回成功响应
+        # 4.2 更新作业主表状态
+        # 无论 Score 是新增还是更新，都更新 Assignment 表的状态
+        assignment.status = "已评分"
+        assignment.processed_at = current_time
+
+        # 4.3 提交事务
+        # db.commit()：执行 Session 中所有挂起的 INSERT 和 UPDATE 操作，完成整个事务
+        db.commit()
+        # db.refresh(assignment)：可选操作，确保 Assignment 对象的状态是最新提交后的状态
+        db.refresh(assignment)
+
+        # =======================
+        # 5. 返回响应
+        # =======================
         return success_response(data={
-            "score": results["score"],  # 得分
+            "score": final_score,
+            "rule_score": rule_score,
+            "ai_score": ai_score_val,
             "breakdown": {
-                "correctness": results["breakdown"]["correctness"],
-                "standardization": results["breakdown"]["standardization"],
-                "efficiency": results["breakdown"]["efficiency"],
-                "readability": results["breakdown"]["readability"],
-            },  # 分项得分
-            "reason": results["reason"],  # 评分建议
-            "suggestions": results["suggestions"],  # 改进建议
-            "strengths": results["strengths"],  # 优点
-            "weaknesses": results["weaknesses"],  # 缺点
+                "correctness": breakdown.get("correctness", 0),
+                "standardization": breakdown.get("standardization", 0),
+                "efficiency": breakdown.get("efficiency", 0),
+                "readability": breakdown.get("readability", 0),
+            },
+            "reason": ai_result.get("reason", ""),
+            "suggestions": suggestions,
+            "strengths": ai_result.get("strengths", []),
+            "weaknesses": ai_result.get("weaknesses", []),
+            "generatedAt": str(current_time)
         })
 
-
-    except ValueError as e:
-        return validation_error_response(message=str(e))
     except Exception as e:
-        return service_error_response(message="服务器内部错误: "+str(e))
+        # 发生未知异常时，必须进行回滚操作，释放数据库锁并恢复会话状态
+        db.rollback()
+        logger.error(f"评分接口发生异常: {str(e)}", exc_info=True)
+        return service_error_response(message=f"服务器内部错误: {str(e)}")
+
+
+def _parse_compile_result(process_result: Any) -> Dict:
+    """
+    辅助函数：安全解析 ImageProcess 中的 process_result 字段
+    处理该字段可能是 JSON 字符串或 Python 字典的情况
+    """
+    if process_result is None:
+        return {}
+
+    if isinstance(process_result, dict):
+        return process_result
+
+    if isinstance(process_result, str):
+        try:
+            return json.loads(process_result)
+        except json.JSONDecodeError:
+            logger.warning("编译结果字符串无法解析为 JSON")
+            return {}
+
+    return {}

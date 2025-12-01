@@ -208,6 +208,8 @@
 
 - `assignmentId` (`string`)
 - `score` (`int`) — 最终评分（例如 0-100）
+- `rule_score`: 0.0, — 编译运行的规则评分
+- `ai_score`: 68.0, — ai的加权评分
 - `breakdown` (`object`) — 分项得分，如 correctness、standardization、efficiency、readability
 - `reason` (`string`) — 评分摘要/原因
 - `suggestions` (`string[]`)
@@ -226,6 +228,8 @@
   "data": {
     "assignmentId": "abcd1234",
     "score": 90,
+    "rule_score": 0.0,
+    "ai_score": 68.0,
     "breakdown": {
       "correctness": 55,
       "standardization": 20,

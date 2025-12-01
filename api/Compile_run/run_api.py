@@ -1,13 +1,17 @@
 import time
+import logging
 
 from core.core_db.crud import assignment_crud, image_process_crud
-from core.core_db.schemas import ImageProcessCreate, ImageProcessUpdate
+from core.core_db.schemas import ImageProcessCreate, ImageProcessUpdate, AssignmentUpdate
 from src.Compile_run import run_code_wandbox_api
 from common.res.response import success_response, validation_error_response, service_error_response, ApiResponse
 
 from fastapi import Depends, APIRouter
 from sqlalchemy.orm import Session  # 导入 Session 类型
 from core.core_db.database import get_db
+
+# 设置日志
+logger = logging.getLogger(__name__)
 
 # 创建路由实例，添加API前缀和标签
 router = APIRouter()
@@ -49,6 +53,8 @@ async def compile_run(assignmentId: int,
         """
         results = run_code_wandbox_api.compile_run(success_code, compiler="gcc-head", timeout=20)
         if results is None:
+            """ 更新状态 """
+            assignment_crud.update_assignment(db, assignmentId, AssignmentUpdate(status="编译失败", processed_at=time.time()))
             return service_error_response(message="代码编译运行失败")
 
         """
@@ -78,6 +84,10 @@ async def compile_run(assignmentId: int,
             )
             image_process_crud.update_image_process(db, assignmentId, image_process_update_data)
 
+        """ 更新状态 """
+        assignment_crud.update_assignment(db, assignmentId,
+                                          AssignmentUpdate(status="编译成功", processed_at=time.time()))
+
         """ 响应, OCR 识别到的源代码文本 """
         # 返回成功响应
         return success_response(data={"language": results_data["language"],
@@ -93,4 +103,9 @@ async def compile_run(assignmentId: int,
     except ValueError as e:
         return validation_error_response(message=str(e))
     except Exception as e:
+        # 如果发生异常，应该回滚事务以防止数据库会话被污染。
+        # db.rollback() # 生产环境中，如果异常发生在 db.commit() 之前，应添加 db.rollback()
+        # 发生未知异常时，必须进行回滚操作，释放数据库锁并恢复会话状态
+        db.rollback()
+        logger.error(f"deepseek-ocr识别接口发生异常: {str(e)}", exc_info=True)
         return service_error_response(message=str("请求服务器错误" + str(e)))

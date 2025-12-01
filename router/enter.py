@@ -7,6 +7,8 @@ from api.upload_img.upload_api import router as upload_router
 from api.ocr_api.deepseek_ocr import router as deepseek_ocr_router
 
 from api.assignments.get_assignments import router as get_assignments_router
+from api.assignments.get_list_assignments import router as get_list_assignments_router
+from api.assignments.delete_list_assignments import router as delete_list_assignments_router
 
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -44,12 +46,10 @@ def router():
     #  获取单个作业路由
     app.include_router(get_assignments_router)
     # #  批量获取作业路由
-    # app.include_router(get_assignments_router)
+    app.include_router(get_list_assignments_router)
     # #  删除单个作业路由
     # app.include_router(get_assignments_router)
     # #  批量删除作业路由
-    # app.include_router(get_assignments_router)
-
+    app.include_router(delete_list_assignments_router)
 
     return app
-

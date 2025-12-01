@@ -29,6 +29,7 @@ class UserResponse(UserBase):
 
 class AssignmentBase(BaseModel):
     original_image_path: str
+    status: Optional[str] = None
     page_count: int = 1
 
 
@@ -37,7 +38,6 @@ class AssignmentCreate(AssignmentBase):
 
 
 class AssignmentUpdate(BaseModel):
-    status: Optional[str] = None
     processed_image_path: Optional[str] = None
     extracted_code: Optional[str] = None
     processed_at: Optional[datetime] = None

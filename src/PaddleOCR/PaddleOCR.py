@@ -74,9 +74,9 @@ def ocr_recognition(image):
     """
        保存识别结果的图片和json数据
     """
-    # for res in result:
+    for res in result:
         # res.print()
-        # print(res["rec_texts"])
+        print(res["rec_texts"])
         # res.save_to_img("output")
         # res.save_to_json("output")
 

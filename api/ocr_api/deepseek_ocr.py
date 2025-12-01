@@ -1,84 +1,97 @@
+import logging
+from pathlib import Path
 from src.DeepSeekOCR.deepseekOCR_1 import deepseek_ocr
-import os
-import time
-from core.core_db.crud import assignment_crud
-from core.core_db.schemas import AssignmentCreate, AssignmentUpdate
-from common.res.response import success_response, validation_error_response, service_error_response, ApiResponse
+from datetime import datetime, timezone  # 导入 datetime 和 timezone
+from core.core_db.models import Assignment
+from common.res.response import success_response, validation_error_response, service_error_response
 from config import image_processed_path, app
 
 from fastapi import Depends, APIRouter
-from sqlalchemy.orm import Session  # 导入 Session 类型
-from core.core_db.database import get_db
+from sqlalchemy.orm import Session  # 导入 SQLAlchemy 的 Session 类型，用于数据库会话管理
+from core.core_db.database import get_db  # 导入获取数据库会话的依赖函数
 
-# 创建路由实例，添加API前缀和标签
+# 设置日志
+logger = logging.getLogger(__name__)
+
+# 创建路由实例
 router = APIRouter()
 
 
-@router.post("/api/assignments/{assignmentId}/deepseek_ocr")
-async def ocr_api(assignmentId: int,
-                  db: Session = Depends(get_db)  # ✅通过依赖注入获取每个请求独立的 db 会话
-                  ):
-    """ 进行HTTP参数绑定，前端 uri 请求数据 （作业ID）
-                  根据 作业ID 查询数据库中的作业图片
-              """
+@router.post("/api/assignments/{assignment_id}/deepseek_ocr")
+async def ocr_api(
+        assignment_id: int,  # 从路径中获取作业 ID
+        # 依赖注入：每个请求都会通过 Depends(get_db) 获取一个独立的 Session 对象。
+        # 这是一个 FastAPI/SQLAlchemy 的标准模式，确保每个请求都有一个隔离的数据库会话。
+        db: Session = Depends(get_db)
+):
     """
-        OCR图片识别接口，基于作业ID查询并处理图片。
-
-        :param assignmentId: 作业ID，由前端提供
-        :return: 包含OCR识别结果的响应
-        """
-    # print("ocr_api运行成功:",assignmentId)
-    # return success_response(data={"recognizedCode":assignmentId})
-
+    OCR图片识别接口，处理特定作业ID的图片识别请求。
+    """
     try:
-        # 参数校验：确保assignmentId有效
-        if not assignmentId or not isinstance(assignmentId, int):
-            return validation_error_response(message="作业ID无效")
+        # 1. 数据库查询操作：根据 ID 查找作业记录
+        # db.query(Assignment)：构建一个针对 Assignment 模型的操作查询。
+        # .filter(Assignment.id == assignment_id)：添加过滤条件，匹配传入的作业 ID。
+        # .first()：执行查询并返回找到的第一个结果（一个 Assignment ORM 对象）。
+        assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
 
-        """ 根据作业ID，查询数据库的作业地址，获取作业图片 （where file_path == original_image_path） """
-        """ 先根据file_path查询数据库中是否存在该图片，（where file_path == original_image_path） """
-        assignment = assignment_crud.get_assignment(db, assignmentId)
-        if assignment is None:
-            return validation_error_response(message="未找到对应的作业图片")
+        if not assignment:
+            # 如果查询结果为空，返回验证错误响应
+            return validation_error_response(message="未找到对应的作业数据")
 
-        # 拿到图片路径的中的图片名称
-        image = f"{assignment.original_image_path}"
-        filename = os.path.splitext(os.path.basename(assignment.original_image_path))
-        filename = f"{filename[0]}{filename[1]}"
-        save_dir = image_processed_path
-        os.makedirs(save_dir, exist_ok=True)
-        # 构建文件保存路径
-        processed_image_path = save_dir + filename
+        if not assignment.original_image_path:
+            # 检查数据库记录中是否有图片路径
+            return validation_error_response(message="该作业缺少原始图片路径")
 
-        #  uploads 目录映射到一个静态 URL, http://127.0.0.1:8000/uploads/processed image.jpg
-        if "uploads" in processed_image_path:
-            res_img_path = "uploads" + processed_image_path.split("uploads")[1].replace("\\", "/")
+        # 2. 路径处理
+        original_path = Path(assignment.original_image_path)
+        save_dir = Path(image_processed_path)
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        # 3. 执行 OCR 识别
+        ocr_result = deepseek_ocr(str(original_path), './output')
+
+        # 4. 准备更新时间
+        # 使用 datetime.now() 获取当前时间，这与数据库的 DateTime 类型匹配。
+        # 注意：建议使用带时区的 datetime.now(timezone.utc) 来确保时间戳的准确性。
+        current_timestamp = datetime.now(timezone.utc)
+
+        if ocr_result is None:
+            # --- 识别失败逻辑 ---
+            # 直接修改 ORM 对象的属性，SQLAlchemy 会跟踪这些变更。
+            assignment.status = "识别失败"
+            assignment.processed_at = current_timestamp
+
+            # 数据库事务操作：提交变更
+            # db.commit()：将 ORM 对象上所有已修改的属性变更同步到数据库中，完成事务。
+            db.commit()
+            # db.refresh(assignment)：从数据库中重新加载 assignment 对象，确保其状态是最新的。
+            db.refresh(assignment)
+            return service_error_response(message="OCR处理失败: 未能识别到内容")
+
         else:
-            res_img_path = processed_image_path.replace("\\", "/")
-        # print(filename)  # 输出：uploads/original_image/IMG_20250928_220327.jpg
-        res_img_path = app['static_url_path'] + res_img_path
+            # --- 识别成功逻辑 ---
+            # 直接修改 ORM 对象的属性
+            assignment.status = "识别成功"
+            assignment.processed_image_path = ""  # 假设不需要保存处理后的图片路径
+            assignment.extracted_code = ocr_result
+            assignment.processed_at = current_timestamp
 
-        output_path = './output'
-        """ ocr识别 """
-        res = deepseek_ocr(image, output_path)
+            # 数据库事务操作：提交变更
+            db.commit()
+            # 从数据库刷新对象状态
+            db.refresh(assignment)
 
-        """ ocr识别结果的源代码字符串后处理后入库 （根据uri传递的请求参数 作业ID 查询数据库，如果该作业存在，则更新作业，否则创建新作业）"""
-        assignment_data = AssignmentUpdate(
-            status="ocr",
-            processed_image_path="",
-            extracted_code=res,
-            processed_at=time.time(),
-        )
-        assignment_crud.update_assignment(db, assignmentId, assignment_data)
-        """ 响应, OCR 识别到的源代码文本 """
-        # 返回成功响应
-        return success_response(data={"recognizedCode": f"{res}",
-                                      "processed_image_path": "",
-                                      "res_image_path": ""
-                                      })
+            # 5. 返回成功响应
+            return success_response(data={
+                "recognizedCode": ocr_result,
+                "processed_image_path": "",
+                "res_image_path": ""
+            })
 
-    except ValueError as e:
-        return validation_error_response(message=str(e))
     except Exception as e:
-        return service_error_response(message=str("请求服务器错误" + str(e)))
-
+        # 如果发生异常，应该回滚事务以防止数据库会话被污染。
+        # db.rollback() # 生产环境中，如果异常发生在 db.commit() 之前，应添加 db.rollback()
+        # 发生未知异常时，必须进行回滚操作，释放数据库锁并恢复会话状态
+        db.rollback()
+        logger.error(f"deepseek-ocr识别接口发生异常: {str(e)}", exc_info=True)
+        return service_error_response(message=f"请求服务器错误: {str(e)}")
