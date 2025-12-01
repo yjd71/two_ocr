@@ -224,29 +224,30 @@
 
 # 4. 批量查看作业列表（Get assignment list）
 
+# 4. 批量查看作业列表（Get assignment list）- 通用模糊匹配版
+
 - **方法 / 路径**：`GET /api/assignments`
-- **用途**：分页获取作业列表，包括每个作业的简要信息以及关联的OCR结果、编译结果、评分报告。
+- **用途**：分页获取作业列表，支持通用模糊匹配查询（可匹配文件名、状态等），包括每个作业的简要信息。
 
 ### 查询参数说明
-| 字段 | 类型 | 必填 | 说明                               |
-|------|------|------|----------------------------------|
-| `page` | `int` | 否 | 页码，从1开始，默认1                      |
-| `pageSize` | `int` | 否 | 每页数量，默认10，最大100                  |
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `page` | `int` | 否 | 页码，从1开始，默认1 |
+| `pageSize` | `int` | 否 | 每页数量，默认10，最大100 |
+| `key` | `string` | 否 | 通用模糊匹配关键词，可匹配多个字段 |
 | `sortBy` | `string` | 否 | 排序字段：createdAt/score，默认createdAt |
-| `sortOrder` | `string` | 否 | 排序顺序：asc/desc，默认desc             |
+| `sortOrder` | `string` | 否 | 排序顺序：asc/desc，默认desc |
 
 ### 响应字段说明（HTTP 200）
 #### 作业列表信息
-| 字段                           | 类型       | 说明      |
-|------------------------------|----------|---------|
-| `assignments[].assignmentId` | `int`    | 作业唯一标识符 |
-| `assignments[].fileName`     | `string` | 文件名     |
-| `assignments[].storedAt`     | `string` | 文件存储路径  |
-| `assignments[].status`       | `string` | 状态      |
-| `assignments[].score`        | `string` | 总分      |
-| `assignments[].createdAt`    | `string` | 创建时间戳   |
-| `assignments[].updatedAt`    | `string` | 最后更新时间戳 |
-
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `assignments[].assignmentId` | `int` | 作业唯一标识符 |
+| `assignments[].fileName` | `string` | 文件名 |
+| `assignments[].status` | `string` | 作业状态：识别成功/识别失败/编译成功/编译失败/已评分等 |
+| `assignments[].score` | `int` | 总分（0-100），如果没有评分则为null |
+| `assignments[].createdAt` | `string` | 创建时间戳（YYYY-MM-DD HH:mm:ss格式） |
+| `assignments[].updatedAt` | `string` | 最后更新时间戳（YYYY-MM-DD HH:mm:ss格式） |
 
 #### 分页信息
 | 字段 | 类型 | 说明 |
@@ -256,7 +257,31 @@
 | `pagination.total` | `int` | 总记录数 |
 | `pagination.totalPages` | `int` | 总页数 |
 
-成功响应示例：
+### 模糊匹配规则说明
+1. **通用匹配字段**：`key`参数支持同时对多个字段进行模糊匹配，包括：
+   - `fileName` - 文件名
+   - `status` - 状态
+   - 匹配不区分大小写
+
+2. **匹配逻辑**：
+   - 如果提供`key`参数，系统会在配置的多个字段中搜索包含该关键词的记录
+   - 支持部分匹配，例如`key=home`会匹配"homework.jpg"、"homework1.cpp"等
+   - 可以同时匹配中文和英文，例如`key=作业`会匹配文件名中包含"作业"的记录
+   - 如果`key`参数为空或不提供，则不进行模糊匹配筛选
+
+3. **状态说明**：`status`字段的可能值：
+   - `上传成功` - 作业文件已成功上传
+   - `识别成功` - OCR识别完成并成功获取代码
+   - `识别失败` - OCR识别失败
+   - `编译成功` - 代码编译成功
+   - `编译失败` - 代码编译失败
+   - `评分成功` - 评分完成
+
+4. **排序规则**：
+   - 按`score`排序时，无评分的作业（score为null）会排在最后
+   - 按`createdAt`排序时，默认按创建时间倒序排列（最新的在前）
+
+### 成功响应示例：
 ```json
 {
   "code": 0,
@@ -266,8 +291,7 @@
       {
         "assignmentId": 1,
         "fileName": "homework1.jpg",
-        "storedAt": "/files/abcd1234/homework1.jpg",
-        "status": "识别成功",
+        "status": "已评分",
         "score": 80,
         "createdAt": "2025-10-24 21:39:50",
         "updatedAt": "2025-10-24 21:40:05"
@@ -275,22 +299,53 @@
       {
         "assignmentId": 2,
         "fileName": "homework2.cpp",
-        "storedAt": "/files/efgh5678/homework2.cpp",
-        "status": "识别成功",
+        "status": "已评分",
         "score": 90,
         "createdAt": "2025-10-24 22:15:30",
         "updatedAt": "2025-10-24 22:15:30"
+      },
+      {
+        "assignmentId": 3,
+        "fileName": "hw3_solution.png",
+        "storedAt": "/files/ijkl9012/hw3_solution.png",
+        "status": "识别中",
+        "score": null,
+        "createdAt": "2025-10-25 10:20:15",
+        "updatedAt": "2025-10-25 10:20:15"
       }
     ],
     "pagination": {
       "page": 1,
       "pageSize": 10,
-      "total": 25,
-      "totalPages": 3
+      "total": 3,
+      "totalPages": 1
     }
   }
 }
 ```
+
+### 错误响应示例：
+```json
+{
+  "code": 1004,
+  "message": "参数无效：pageSize 不能超过100",
+  "data": null
+}
+```
+
+### 使用场景示例
+1. **搜索特定关键词**：`GET /api/assignments?key=homework` - 搜索包含"homework"的作业（可匹配文件名或状态）
+2. **搜索特定状态**：`GET /api/assignments?key=评分成功` - 搜索状态为"已评分"的作业
+3. **按分数排序**：`GET /api/assignments?sortBy=score&sortOrder=desc` - 按分数从高到低排序
+4. **分页查看**：`GET /api/assignments?page=2&pageSize=20` - 查看第2页，每页20条
+5. **组合查询**：`GET /api/assignments?key=hw&page=1&pageSize=15&sortBy=createdAt&sortOrder=desc` - 搜索包含"hw"的作业，按创建时间倒序排列，第一页显示15条
+
+### 接口性能建议
+1. **模糊匹配优化**：建议对常用搜索字段（如`fileName`）建立全文索引以提高模糊查询性能
+2. **分页限制**：`pageSize`最大限制为100，防止一次查询返回过多数据
+3. **缓存策略**：可以考虑对频繁查询的结果进行缓存，特别是排序和分页查询
+4. **异步处理**：当查询条件复杂且数据量大时，可以考虑异步查询并返回任务ID
+5. **搜索建议**：可以配合实现搜索建议功能，根据用户输入的关键词提供匹配建议
 
 ---
 
@@ -307,7 +362,7 @@
 
 # 7. 变更记录
 
-- 2025-10-27：新增5个删改查接口：
+- 2025-11-30：新增4个删改查接口：
   - 删除单个作业（包括关联数据清理）
   - 批量删除作业（支持批量操作和关联数据清理）
   - 查看单个作业（包含完整的关联数据查询）

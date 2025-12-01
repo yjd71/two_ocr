@@ -41,35 +41,36 @@ class KimiCppScorer:
 {requirements}
 
 评分标准和权重分配:
-- 代码总分(满分为100分): 总分一定一定要等于各维度分数之和。
-- 代码正确性 (满分为60分): 即使代码不完整或有错误，只要显示出正确的编程思路，就应给予部分分数,尽量给高分
-- 代码规范性 (满分为20分): 识别代码的格式和结构，只要有一定的规范性就应给予分数，尽量给高分
-- 代码效率 (满分为10分): 对识别出的代码结构进行基本评估，尽量给高分
-- 代码可读性 (满分为10分): 评估代码的整体可读性，尽量给高分
+- 代码总分(满分为100分): 总分一定一定要等于各维度分数的加权和。
+- 代码正确性 (满分为100分): 即使代码不完整或有错误，只要显示出正确的编程思路，就应给予部分分数,尽量给高分
+- 代码规范性 (满分为100分): 识别代码的格式和结构，只要有一定的规范性就应给予分数，尽量给高分
+- 代码效率 (满分为100分): 对识别出的代码结构进行基本评估，尽量给高分
+- 代码可读性 (满分为100分): 评估代码的整体可读性，尽量给高分
 
 
 重要评分原则:
 1. 对于识别质量较差的代码，不要直接给0分，应根据代码中存在的有效部分给予部分分数，尽量给高分
-2. 如果代码显示出正确的编程思路，即使实现不完整，也应在正确性维度给予基础分(30-50分)，尽量给高分
+2. 如果代码显示出正确的编程思路，即使实现不完整，也应在正确性维度给予基础分，尽量给高分
 3. 识别出的代码片段只要包含栈的基本操作思路(push/pop等)，就应肯定其部分正确性，尽量给高分
 4. 评分时应考虑代码可能是由OCR或识别工具生成，可能存在识别错误，尽量给高分
 
 特殊情况处理:
 - 如果代码完全不相关或无法识别任何栈相关操作，正确性可给0分，尽量给高分
-- 如果代码显示出栈的基本概念但实现有误，正确性应给予20-40分，尽量给高分
-- 如果代码基本正确但有少量错误，正确性应给予50-60分，尽量给高分
+- 如果代码显示出栈的基本概念但实现有误，尽量给高分
+- 如果代码基本正确但有少量错误，尽量给高分
 - 只有完全无法识别或完全无关的代码才给0分，尽量给高分
 
 请以JSON格式返回评分结果，包含以下字段:
-- score: 总分(0-100)，总分必须等于各维度得分的加和。
-- breakdown: 各维度得分(包含correctness, standardization, efficiency, readability)，各维度得分加和要等于总分。
+- score: 总分(0-100)
+- breakdown: 各维度得分(包含correctness, standardization, efficiency, readability)，各维度得分都是0-100。
 - reason: 评分理由，如果有语法编译错误请一定一定要具体指出说明，如缺少分号等等
 - suggestions: 改进建议列表(即使满分也可以提供优化建议)，着重写出代码中具体的语法错误(如果没有就不要写)
 - strengths: 代码优点列表
 - weaknesses: 代码缺点列表
 
+score=correctness*60%+standardization*20%+efficiency*10%+readability*10%
+请确保返回的内容是有效的JSON格式，不要包含其他额外文本。
 
-请确保返回的内容是有效的JSON格式，不要包含其他额外文本
         """
         return prompt
 
@@ -180,50 +181,67 @@ def ai(perfect_code, run_result):
 if __name__ == "__main__":
     # C++代码
     perfect_code = """
-    "#include_ciostream>
-1
-using namespace std
-class Stack{
-private;
-int efementsi
-int top
-int maxSize:
+
+#include<iostream>
+using namespace std;
+class Stack
+{
+private:
+    intt elements;
+    int top;
+    int maxSize;
 public:
-Stack(int_size=5){
-maxSize =sizeof:
-elements = new intimaxsize]i
-top=-1;
-~Stack(){
-deleteilelementsi}
-.void push int element){
-if (top maxSize-1){
-elements I++top]=element;
-cout<元素"<element<:栈成end}
-else cout"满,无法入栈<endl}
-int_pop()
-ifctop>=0)8
-int_element=elements top-];
-cout<"元素<element<成功"s endi;}
-elsecout<",无法出栈aendl;
-Yeturnti}
-int_getsize()
-int sizeof=top+1i
-cout<"中当前有"<sizeof<个元素"<endl;
-return sizeof;}
-int_get emptylots()
-int_empty=maxSize-top+1);
-cut中还剩"<empty<"个位"<endl;
-return emptyi}
-3
-int mainc)
-Stack Stack;
-Stack push.cui
-1
-Stack.push(z).
-StackpopL);
-Stack.getsize(-):
-Stack.get&emptyslots)i
-Yeturn_vi  """
+    Stack(int size=5){
+    maxSize=size;
+    elements = new int[maxSize];
+    top=-1;
+    }
+    ~Stack(){
+    delete[] elements;
+    }
+    void push(int element){
+    if(top<maxSize-1){
+    elements[++top]=element;
+    cout<<"元素"<<"<element<:"<<endl;
+    }
+    else{
+    cout<<"栈满,无法出栈"<<endl;
+    }
+    }
+};
+
+int pop(){
+    if(top>0){
+    int element=elements[top--];
+    cout<<"元素"<<"<element<:"<<endl;
+    }
+    else{
+    exit("栈空,无法出栈"<<endl;
+    }
+    return t;
+}
+
+int getSize(){
+    int size=top;
+    cout<<"栈中当前有"<<size<<"个元素"<<endl;
+    return size;
+}
+
+int getEmptyLots(){
+    int empty=maxSize-(top+1);
+    cout<<"栈中已无列"<<empty<<"个空位"<<endl;
+    return empty;
+}
+
+int main(){
+    Stack stack;
+    stack.push(u);
+    stack.push(u);
+    stack.pop();
+    stack.getSize();
+    stack.getEmptyLots();
+    return 0;
+}"""
 
     run_result = """
        {"data": {"error": "main.cpp:1: error: expected ';' before '}' token", "output": null, "evalTime": "2025-10-28 23:00:35", "language": "C++", "submitTime": "2025-10-28 23:00:35", "compileSuccess": false, "codeLengthBytes": 204}}

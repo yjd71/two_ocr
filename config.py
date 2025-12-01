@@ -11,6 +11,7 @@ DATABASE = {
 app = {
     "host": "127.0.0.1",
     "port": 8000,
+    "local_static_url_path": r"C:\IT\AI\OCR\two_ocr\uploads",  # 静态 URL
     "static_url_path": "http://127.0.0.1:8000/"  # 静态 URL
 }
 

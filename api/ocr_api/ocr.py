@@ -57,41 +57,37 @@ async def ocr_api(assignmentId: int,
         else:
             res_img_path = processed_image_path.replace("\\", "/")
 
-        # print(filename)  # 输出：uploads/original_image/IMG_20250928_220327.jpg
         res_img_path = app['static_url_path'] + res_img_path
-        # print("res_img_path: ", res_img_path)
 
         """ ocr识别 """
         # 使用PaddleOCR识别 的结果
         results = ocr_v2.paddle_ocr(image, processed_image_path)
+        """ 如果该识别存在，则更新作业，状态更新为：识别失败）"""
         if results is None:
+            assignment_data = AssignmentUpdate(
+                status="识别失败",
+                processed_image_path=f"{processed_image_path}",
+                processed_at=time.time(),
+            )
+            assignment_crud.update_assignment(db, assignmentId, assignment_data)
             return service_error_response(message="OCR处理失败")
 
-        """ ocr识别结果的图片入库（根据uri传递的请求参数 作业ID 查询数据库，如果该作业存在，则更新作业，否则创建新作业） """
+        """ 把 OCR 的 rec_texts（字符串列表）拼成一个包含换行符的源代码字符串。在内存中执行 OCR 并直接返回拼接好的源代码字符串（不写文件）。"""
+        corrected = ocr_v2.ocr_recognition_return_string(results)
 
-        # 把 OCR 的 rec_texts（字符串列表）拼成一个包含换行符的源代码字符串。在内存中执行 OCR 并直接返回拼接好的源代码字符串（不写文件）。
-        code_str = ocr_v2.ocr_recognition_return_string(results)
+        """ 后处理 OCR 识别出来的代码字符串，返回修正后的代码字符串。"""
+        # corrected = ocr_v2.postprocess_code(corrected, verbose=True)
 
-        # 合并为 string（和之前给的合并函数等价）
-        # print("=== 原始 OCR 字符串 ===")
-        # print(code_str)
-        """ ocr识别结果的源代码字符串入库 （根据uri传递的请求参数 作业ID 查询数据库，如果该作业存在，则更新作业，否则创建新作业）"""
-
-        # 后处理 OCR 识别出来的代码字符串，返回修正后的代码字符串。
-        corrected = ocr_v2.postprocess_code(code_str, verbose=True)
-        # print("\n=== 后处理后 ===")
-        # print(corrected)
-
-        """ ocr识别结果的源代码字符串后处理后入库 （根据uri传递的请求参数 作业ID 查询数据库，如果该作业存在，则更新作业，否则创建新作业）"""
+        """ ocr识别结果的源代码字符串后处理后入库 """
         assignment_data = AssignmentUpdate(
-            status="ocr",
+            status="识别成功",
             processed_image_path=f"{processed_image_path}",
             extracted_code=corrected,
             processed_at=time.time(),
         )
         assignment_crud.update_assignment(db, assignmentId, assignment_data)
+
         """ 响应, OCR 识别到的源代码文本 """
-        # 返回成功响应
         return success_response(data={"recognizedCode": f"{corrected}",
                                       "processed_image_path": f"{res_img_path}",
                                       "res_image_path": f"{res_img_path}"

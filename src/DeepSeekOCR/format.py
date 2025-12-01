@@ -25,7 +25,7 @@ def deepseek_ocr():
     # prompt = "<image>\n<|grounding|>Convert the document to markdown. "
 
     # 输出只有结果的格式
-    prompts = "<image>\n<|grounding|>Convert the document to markdown.Extract the code text only."
+    prompts = "<image>\n<|grounding|>Convert the document to markdown.Fix format errors.Extract the code text only."
     # prompts = "<image>\n<|grounding|>OCR the text exactly as it appears. Preserve all characters, spacing, and formatting without making any changes."
     # prompts = "<image>\n<|grounding|>识别图片中的内容"
 
@@ -49,8 +49,8 @@ def deepseek_ocr():
                       prompt=prompts,
                       image_file=image_file,
                       output_path=output_path,
-                      save_results=False,
-                      eval_mode=True,
+                      save_results=True,
+                      # eval_mode=True,
                       # output_path=None,  # 不设置输出路径
                       # save_results=False,  # 不保存结果 ， 可获取返回值
                       base_size=1024,

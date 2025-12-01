@@ -210,66 +210,66 @@ def compile_run(success_code):
 
 if __name__ == "__main__":
     success_code = """
-#include<iostream>
+#include <iostream>
 using namespace std;
 class Stack
 {
 private:
-    intt elements;
+    int& elements;
     int top;
     int maxSize;
 public:
-    Stack(int size=5){
-    maxSize=size;
+    Stack(int size = 5){
+    maxSize = size;
     elements = new int[maxSize];
-    top=-1;
+    top = -1;
     }
     ~Stack(){
     delete[] elements;
     }
     void push(int element){
-    if(top<maxSize-1){
-    elements[++top]=element;
-    cout<<"元素"<<"<element<:"<<endl;
+    if(top < maxSize - 1){
+    elements[++top] = element;
+    cout << "元素" << element << "被压入栈" << endl;
     }
-    else{
-    cout<<"栈满,无法出栈"<<endl;
+    else {
+    cout << "栈满,无法压入栈" << endl;
     }
     }
 };
 
 int pop(){
-    if(top>0){
-    int element=elements[top--];
-    cout<<"元素"<<"<element<:"<<endl;
+    if(top == 0){
+    int element = elements[top--];
+    cout << "元素" << element << "被弹出" << endl;
     }
-    else{
-    exit("栈空,无法出栈"<<endl;
+    else {
+    cout << "栈空,无法弹出" << endl;
     }
-    return t;
-}
+    return 0;
+};
 
 int getSize(){
-    int size=top;
-    cout<<"栈中当前有"<<size<<"个元素"<<endl;
+    int size = top;
+    cout << "栈中当前有" << size << "个元素" << endl;
     return size;
-}
+};
 
 int getEmptyLots(){
-    int empty=maxSize-(top+1);
-    cout<<"栈中已无列"<<empty<<"个空位"<<endl;
+    int empty = maxSize - (top + 1);
+    cout << "栈中已空剩" << empty << "个空位" << endl;
     return empty;
-}
+};
 
 int main(){
     Stack stack;
-    stack.push(u);
-    stack.push(u);
+    stack.push(0);
+    stack.push(1);
     stack.pop();
     stack.getSize();
     stack.getEmptyLots();
     return 0;
-}
+};
     """
     result = compile_run(success_code)
     print(json.dumps(result, indent=2, ensure_ascii=False))

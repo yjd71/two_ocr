@@ -45,9 +45,11 @@ def preprocess_img_pro(image):
 
 # 使用EasyOCR识别
 def ocr_recognition(image):
-    reader = easyocr.Reader(['en'], gpu=True,
-                            # model_storage_directory='../../easyocr/model',
-                            )  # 初始化 ocr 引擎， 设置语言为英文和中文, model_storage_directory：自定义模型存储路径
+    reader = easyocr.Reader(
+        ['en', 'ch_sim',],
+        gpu=True,
+        # model_storage_directory='../../easyocr/model',
+    )  # 初始化 ocr 引擎， 设置语言为英文和中文, model_storage_directory：自定义模型存储路径
     result = reader.readtext(image,  # image：支持文件路径、URL、字节数据或Opencv格式图像
                              detail=1,  # detail: 是否返回位置信息（默认1返回全部信息）
                              paragraph=False,  # paragraph:是否合并为段落(默认False）
@@ -77,13 +79,17 @@ def show_images(original, opening):
 
 if __name__ == '__main__':
     image = '../../Data/zhangqikui/test1/IMG_20250928_222538.jpg'
+    image_id = './img_1.png'
     # 加载图片
-    original_image = load_img(image)
-    # 图片预处理
-    preprocessed_image = preprocess_img_pro(original_image)
+    original_image = load_img(image_id)
+    """ 图片预处理 """
+    # preprocessed_image = preprocess_img_pro(original_image)
 
     # 使用EasyOCR识别
-    ocr_result = ocr_recognition(preprocessed_image)
+    ocr_result = ocr_recognition(original_image)
+    """ 图片预处理 """
+    # ocr_result = ocr_recognition(preprocessed_image)
+
 
     # 输出OCR结果
     # 确保输出文件夹存在
@@ -104,4 +110,6 @@ if __name__ == '__main__':
             print(f"识别文本： {text}")
 
     # 显示处理过程中的每个阶段的图片
-    show_images(original_image, preprocessed_image)
+    """ 加上图片预处理 """
+    # show_images(original_image, preprocessed_image)
+    show_images(original_image, original_image)

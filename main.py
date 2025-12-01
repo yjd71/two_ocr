@@ -21,6 +21,6 @@ if __name__ == "__main__":
     # 包含路由模块
     app = router.router()
     # 在FastAPI应用中添加静态文件服务来映射uploads目录
-    app.mount("/uploads", StaticFiles(directory=r"C:\IT\AI\OCR\two_ocr\uploads"), name="uploads")
+    app.mount("/uploads", StaticFiles(directory=config.app['local_static_url_path']), name="uploads")
 
     uvicorn.run(app, host=config.app['host'], port=config.app['port'])
