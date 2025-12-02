@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vue插槽与路由示例</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/vue-router@4"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        #app {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        header {
+            background: linear-gradient(to right, #4a00e0, #8e2de2);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        nav {
+            background: #f5f5f5;
+            padding: 15px;
+            display: flex;
+            gap: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        .nav-btn {
+            padding: 8px 16px;
+            background: #4a00e0;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .nav-btn.active {
+            background: #8e2de2;
+        }
+        .content {
+            padding: 20px;
+            min-height: 300px;
+        }
+        .page-title {
+            color: #4a00e0;
+            margin-bottom: 15px;
+        }
+        .slot-area {
+            border: 2px dashed #8e2de2;
+            padding: 15px;
+            margin: 15px 0;
+            background: #f9f7ff;
+        }
+        footer {
+            background: #f5f5f5;
+            padding: 15px;
+            text-align: center;
+            border-top: 1px solid #ddd;
+        }
+        .fade-enter-active, .fade-leave-active {
+            transition: opacity 0.3s;
+        }
+        .fade-enter-from, .fade-leave-to {
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script>
+        const { createApp } = Vue;
+        const { createRouter, createWebHashHistory } = VueRouter;
+
+        // 布局组件
+        const AppLayout = {
+            template: `
+                <div class="container">
+                    <header>
+                        <h1>Vue插槽与路由示例</h1>
+                    </header>
+
+                    <nav>
+                        <button
+                            @click="$router.push('/')"
+                            :class="['nav-btn', $route.path === '/' ? 'active' : '']"
+                        >
+                            首页
+                        </button>
+                        <button
+                            @click="$router.push('/about')"
+                            :class="['nav-btn', $route.path === '/about' ? 'active' : '']"
+                        >
+                            关于
+                        </button>
+                    </nav>
+
+                    <main class="content">
+                        <!-- 默认插槽 -->
+                        <slot></slot>
+
+                        <!-- 具名插槽 -->
+                        <slot name="footer">
+                            <footer>默认页脚内容</footer>
+                        </slot>
+                    </main>
+                </div>
+            `
+        };
+
+        // 首页组件
+        const HomePage = {
+            template: `
+                <div>
+                    <h2 class="page-title">首页</h2>
+                    <p>这是首页内容，通过默认插槽显示。</p>
+
+                    <div class="slot-area">
+                        <h3>默认插槽内容</h3>
+                        <p>这个区域的内容由HomePage组件提供</p>
+                    </div>
+                </div>
+            `
+        };
+
+        // 关于页面组件
+        const AboutPage = {
+            template: `
+                <div>
+                    <h2 class="page-title">关于页面</h2>
+                    <p>这是关于页面，展示了不同的内容。</p>
+
+                    <div class="slot-area">
+                        <h3>关于我们</h3>
+                        <p>这个页面展示了路由替换内容的效果</p>
+                    </div>
+                </div>
+            `
+        };
+
+        // 路由配置
+        const routes = [
+            { path: '/', component: HomePage },
+            { path: '/about', component: AboutPage }
+        ];
+
+        // 创建路由器
+        const router = createRouter({
+            history: createWebHashHistory(),
+            routes
+        });
+
+        // 根组件
+        const App = {
+            template: `
+                <app-layout>
+                    <!-- 默认插槽内容 -->
+                    <router-view v-slot="{ Component }">
+                        <transition name="fade" mode="out-in">
+                            <component :is="Component" />
+                        </transition>
+                    </router-view>
+
+                    <!-- 具名插槽内容 -->
+                    <template #footer>
+                        <footer>自定义页脚 - 通过具名插槽替换</footer>
+                    </template>
+                </app-layout>
+            `,
+            components: {
+                AppLayout
+            }
+        };
+
+        // 创建Vue应用
+        const app = createApp(App);
+        app.use(router);
+        app.mount('#app');
+    </script>
+</body>
+</html>

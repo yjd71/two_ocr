@@ -1,0 +1,310 @@
+/* src/pages/SmartGrader.css */
+
+/* === 全局布局与容器 === */
+.page-background {
+  height: 100%;
+  width: 100%;
+  /* 允许垂直滚动 */
+  overflow-y: auto; 
+  /* 使用 Flex 让内容在不够高时也能居中，够高时顶部对齐 */
+  display: flex;
+  flex-direction: column;
+  align-items: center; 
+  
+  padding: 40px 0; /* 上下留出呼吸空间 */
+  background-image: radial-gradient(#e5e6eb 1px, transparent 1px);
+  background-size: 20px 20px;
+  box-sizing: border-box;
+}
+
+.grader-container {
+  width: 100%;
+  max-width: 1100px;
+  /* 高度由内容撑开，不再锁死 */
+  height: auto; 
+  display: flex;
+  flex-direction: column;
+  gap: 24px; /* 卡片区和说明区之间的间距 */
+  
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+/* === 强制恢复两张大卡片的高度 === */
+.main-row {
+  /* 这里设定一个固定高度，保证它们像之前一样大 */
+  /* 您可以根据需要调整这个值，比如 650px, 750px */
+  height: 700px; 
+  flex-shrink: 0; /* 防止被挤压 */
+}
+/* === 卡片通用样式 === */
+.styled-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  background: #fff;
+  border: 1px solid rgba(255,255,255,0.5);
+}
+
+.styled-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1d2129;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.title-icon { font-size: 18px; }
+
+:deep(.arco-card-body) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  overflow: hidden !important; 
+  height: 100%;
+}
+:deep(.arco-card-body::-webkit-scrollbar) { display: none !important; }
+
+/* ===  叠层架构 (The Overlay Architecture) === */
+
+/* 1. 最外层容器：负责边框和背景 */
+.upload-wrapper-layer {
+  flex: 1;
+  height: 100%;
+  border: 2px dashed #e5e6eb;
+  border-radius: 12px;
+  background: #f7f8fa;
+  transition: border-color 0.3s;
+  overflow: hidden;
+  position: relative; /* 关键 */
+  cursor: pointer;
+}
+.upload-wrapper-layer:hover {
+  border-color: #165dff;
+  background: #f0f4ff;
+}
+
+/* 2. 视觉层：负责完美的居中展示 */
+.visual-layer {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1; /* 在下层 */
+  pointer-events: none; /* 让鼠标穿透，防止挡住上传点击 */
+}
+
+/* 3. 功能层：负责隐形上传 */
+.invisible-uploader {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  z-index: 5; /* 盖在视觉层上面 */
+  opacity: 0; /* 完全透明 */
+}
+
+/* 强制让 Arco 内部的 dragger 撑满功能层，确保哪里都能点到 */
+:deep(.arco-upload-dragger) {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+}
+
+/* === 视觉层的内部元素样式 === */
+
+/* 空状态下的图标和文字 */
+.empty-mode {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.icon-bg {
+  width: 72px; 
+  height: 72px;
+  background: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+  margin-bottom: 24px; 
+}
+
+.upload-icon { font-size: 36px; color: #165dff; }
+.upload-main-text { font-size: 16px; font-weight: 600; color: #1d2129; margin-bottom: 8px; }
+.upload-sub-text { font-size: 13px; color: #86909c; }
+
+/* 预览模式 */
+.preview-mode {
+  width: 100%; height: 100%;
+  display: flex; justify-content: center; align-items: center;
+  position: relative;
+  background: #000;
+  pointer-events: auto; /* 图片区域需要响应删除按钮，恢复事件 */
+}
+.preview-img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+.re-upload-tip {
+  position: absolute; bottom: 20px;
+  background: rgba(0,0,0,0.6); color: #fff;
+  padding: 4px 12px; border-radius: 12px; font-size: 12px;
+}
+
+.delete-btn {
+  position: absolute; top: 10px; right: 10px; z-index: 50; /* 最高层级 */
+  width: 32px; height: 32px;
+  background-color: rgba(255, 77, 79, 0.8);
+  color: white; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.2s;
+  pointer-events: auto; /* 必须开启，否则点不到 */
+}
+.delete-btn:hover { background-color: rgb(255, 77, 79); transform: scale(1.1); }
+/* ===  新增：代码预览框美化 (仿 IDE) === */
+.code-box {
+  background: #1e1e1e;
+  border-radius: 8px;
+  padding: 16px;
+  overflow: hidden;
+  border: 1px solid #333;
+}
+:deep(.arco-textarea) {
+  background: transparent !important;
+  color: #d4d4d4 !important; /* 浅灰色代码 */
+  border: none !important;
+  font-family: 'Fira Code', 'Consolas', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: none;
+}
+:deep(.arco-textarea-wrapper:focus-within), :deep(.arco-textarea-wrapper) {
+  border: none !important; box-shadow: none !important; padding: 0;background: transparent !important;
+}
+/* === 新增：底部模式说明框样式 === */
+.mode-info-box {
+  margin-top: 24px; /* 与按钮拉开距离 */
+  padding: 16px;
+  background-color: #f0f6ff; /* 非常浅的蓝色背景，类似图1 */
+  border: 1px dashed #165dff; /* 蓝色虚线边框 */
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.info-title {
+  color: #165dff; /* 标题蓝色 */
+  font-weight: bold;
+  font-size: 14px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.info-item {
+  margin-bottom: 6px;
+  display: flex;
+  align-items: flex-start; /* 让标签和文字顶部对齐 */
+}
+
+.info-item:last-child {
+  margin-bottom: 0;
+}
+
+.info-label {
+  font-weight: bold;
+  color: #1d2129;
+  flex-shrink: 0; /* 防止标签被压缩 */
+  margin-right: 4px;
+}
+
+.info-text {
+  color: #4e5969;
+}
+/* ===  新增：终端输出框美化 (黑底红字) === */
+/* 1. 基础样式（黑底白字） */
+.terminal-box {
+  background-color: #1e1e1e; /* 黑色背景 */
+  color: #d4d4d4;            /* 默认字是灰白色的 */
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #333;
+  white-space: pre-wrap;     /* 关键：必须加这个，不然换行符 \n 不生效！ */
+  font-family: 'Fira Code', monospace;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* 2. 错误样式（黑底红字） */
+/* 当 Vue 加上 is-error 类时，字体变红 */
+.terminal-box.is-error {
+  color: #ff6b6b; /* 亮红色 */
+  border-color: #5c2b2b;
+}
+/* === 底部按钮与右侧结果 === */
+.left-footer { margin-top: 24px; }
+.action-btn-main { height: 48px; font-size: 16px; font-weight: 500; border-radius: 8px; box-shadow: 0 4px 10px rgba(22, 93, 255, 0.2); }
+/* ===  新增：左上角预览按钮样式 === */
+.preview-btn {
+  position: absolute; 
+  top: 10px; 
+  left: 10px; /* 定位在左侧 */
+  z-index: 30; 
+  
+  width: 32px; 
+  height: 32px;
+  background-color: rgba(0, 0, 0, 0.5); /* 半透明黑底 */
+  color: white; 
+  border-radius: 50%;
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  cursor: pointer; 
+  transition: all 0.2s;
+}
+
+.preview-btn:hover {
+  background-color: #165dff; /* 悬停变 Arco 蓝 */
+  transform: scale(1.1);
+}
+.result-stream {
+  flex: 1;
+  overflow: hidden !important; 
+  padding-right: 0;
+  margin-bottom: 20px;
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+.result-stream::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+:deep(*::-webkit-scrollbar) { display: none !important; width: 0 !important; height: 0 !important; }
+
+.empty-state {
+  height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  color: #86909c; margin-top: 40px;
+}
+.empty-icon-bg {
+  width: 80px; height: 80px;
+  background: #f2f3f5; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 16px;
+}
+
+.styled-alert { border: 1px solid #e8ffea; background: #fafffb; border-radius: 8px; padding: 12px 16px; }
+.progress-card { border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.03); border: 1px solid #f2f3f5; background: #fff; padding: 15px; margin-bottom: 15px; }
+.progress-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: bold; color: #165dff; }
+.right-footer-actions { display: flex; justify-content: flex-end; padding-top: 20px; border-top: 1px solid #f2f3f5; }

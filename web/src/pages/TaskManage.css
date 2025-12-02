@@ -1,0 +1,208 @@
+/* === 页面容器 === */
+.page-background {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-image: radial-gradient(#e5e6eb 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.grader-container {
+  width: 100%;
+  max-width: 1200px; /* 稍微加宽一点，让表格更舒服 */
+  height: 80vh;      /* 加高一点 */
+  min-height: 600px;
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+/* === 卡片样式 === */
+.styled-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  background: #fff;
+  border: 1px solid rgba(255,255,255,0.5);
+}
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1d2129;
+  display: flex; align-items: center; gap: 8px;
+}
+.title-icon { font-size: 18px; }
+
+/* 深度选择器：调整 Card 内容区 */
+:deep(.arco-card-body) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 24px;
+  overflow: hidden; /* 防止卡片整体出现滚动条 */
+}
+
+/* === 工具栏样式 === */
+.toolbar {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 16px; padding: 0 2px;
+}
+.search-area { display: flex; gap: 12px; }
+.sort-area { display: flex; align-items: center; gap: 10px; }
+.sort-label { color: #86909c; font-size: 14px; }
+.sort-btn { padding: 0 10px; }
+
+/* === 表格区域 (滚动修复核心) === */
+.custom-table {
+  flex: 1;
+  /* 移除 overflow: hidden，由 Arco Table 内部接管滚动 */
+  min-height: 0; /* 关键：Flex 子项滚动必须设为 0 */
+}
+
+/* 美化表格内部滚动条 */
+:deep(.arco-scrollbar-track) { background-color: transparent; }
+:deep(.arco-scrollbar-thumb) { background-color: #e5e6eb; }
+:deep(.arco-scrollbar-thumb:hover) { background-color: #c9cdd4; }
+
+/* 调整表头背景，更清爽 */
+:deep(.arco-table-th) {
+  background-color: #f7f8fa !important;
+  font-weight: 600;
+  color: #4e5969;
+}
+
+/* === 底部操作区 === */
+.table-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-top: 16px; border-top: 1px solid #f2f3f5; margin-top: auto;
+}
+.batch-actions { display: flex; align-items: center; gap: 10px; }
+.selected-text { font-size: 12px; color: #86909c; }
+
+/* === 状态与分数 === */
+.score-high { color: #00b42a; font-weight: 700; font-family: 'Roboto', sans-serif; }
+.score-mid { color: #ff7d00; font-weight: 700; font-family: 'Roboto', sans-serif; }
+.score-low { color: #f53f3f; font-weight: 700; font-family: 'Roboto', sans-serif; }
+
+/* ===  弹窗美化样式 === */
+
+/* 1. 代码预览框 (仿 IDE) */
+.code-box {
+  background: #1e1e1e; /* VSCode Dark 背景 */
+  border-radius: 8px;
+  padding: 16px;
+  overflow: hidden;
+  border: 1px solid #333;
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.2); /* 增加一点内阴影，更有质感 */
+}
+
+/* 深度修改 a-textarea 样式 */
+:deep(.arco-textarea) {
+  background: transparent !important; /* 透明背景，透出 .code-box 的颜色 */
+  color: #d4d4d4 !important; /* 代码灰白 */
+  border: none !important;
+  font-family: 'Fira Code', 'Consolas', 'Menlo', monospace; /* 专业的等宽字体栈 */
+  font-size: 14px;
+  line-height: 1.6; /* 增加行高，更易读 */
+  resize: none; /* 禁止调整大小 */
+  cursor: text; /* 鼠标样式 */
+}
+
+/* 隐藏 textarea 的聚焦边框和默认边框 */
+:deep(.arco-textarea-wrapper:focus-within), 
+:deep(.arco-textarea-wrapper) {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  padding: 0; /* 清除默认 padding，由 .code-box 控制 */
+}
+
+/* === 终端输出框 (通用样式) === */
+.terminal-box {
+  background-color: #1e1e1e; /* 统一使用深黑背景 */
+  color: #d4d4d4;            /* 默认文本颜色：灰白 (成功时) */
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #333;
+  
+  /*  关键：保留换行符和空格，否则报错信息会挤成一坨 */
+  white-space: pre-wrap; 
+  
+  /* 字体设置：使用等宽字体，确保 ^ 箭头对齐 */
+  font-family: 'Fira Code', 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  
+  max-height: 400px;
+  overflow-y: auto;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.3);
+}
+
+/* ===  错误状态样式 (模仿截图) === */
+.terminal-box.is-error {
+  color: #ff6b6b; /* 亮红色/橘红色，黑底上更清晰 */
+  border-color: #5c2b2b; /* 边框也泛红 */
+  background-color: #1e1e1e; /* 保持深底 */
+}
+
+/* 3. AI 报告美化 */
+.ai-report-container {
+  padding: 0 10px;
+}
+
+/* 优缺点卡片 */
+.feedback-grid {
+  display: flex; gap: 20px; margin-top: 20px;
+}
+.feedback-card {
+  flex: 1;
+  border-radius: 12px;
+  padding: 16px;
+  transition: transform 0.2s;
+}
+.feedback-card:hover { transform: translateY(-2px); }
+
+.feedback-card.pros {
+  background: linear-gradient(180deg, #e8ffea 0%, #fafffb 100%);
+  border: 1px solid #b7eb8f;
+}
+.feedback-card.cons {
+  background: linear-gradient(180deg, #fff2f0 0%, #fff 100%);
+  border: 1px solid #ffccc7;
+}
+
+.feedback-header {
+  display: flex; align-items: center; gap: 8px;
+  font-weight: bold; font-size: 15px; margin-bottom: 12px;
+}
+.feedback-list {
+  padding-left: 20px; margin: 0; color: #4e5969; font-size: 13px;
+}
+.feedback-list li { margin-bottom: 6px; }
+
+/* 建议部分 */
+.suggestion-box {
+  margin-top: 20px;
+  background: #fff7e6;
+  border: 1px solid #ffd591;
+  border-radius: 12px;
+  padding: 16px;
+}
+.suggestion-title {
+  color: #fa8c16; font-weight: bold; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;
+}
+.suggestion-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  margin-bottom: 8px; color: #595959; font-size: 13px;
+}
+.idx-badge {
+  background: #fa8c16; color: #fff; width: 18px; height: 18px;
+  border-radius: 50%; font-size: 11px;
+  display: flex; justify-content: center; align-items: center;
+  flex-shrink: 0;
+}
