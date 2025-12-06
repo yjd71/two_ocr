@@ -25,15 +25,23 @@ def deepseek_ocr():
     # prompt = "<image>\n<|grounding|>Convert the document to markdown. "
 
     # 输出只有结果的格式
-    prompts = "<image>\n<|grounding|>Convert the document to markdown.Fix format errors.Extract the code text only."
-    # prompts = "<image>\n<|grounding|>OCR the text exactly as it appears. Preserve all characters, spacing, and formatting without making any changes."
-    # prompts = "<image>\n<|grounding|>识别图片中的内容"
+    # prompts = "<image>\n<|grounding|>Convert the document to markdown.Fix format errors.Extract the code text only."
+
+    # 选项2 强调整体检测
+    prompts = "<image>\n<|grounding|>Convert the document to markdown and Extract the complete code block as one unified text region and Return a single bounding box covering all the code and fix format errors and code errors. "
+
+    # prompts = "<image>\n<|grounding|>Convert the document to markdown and Detect the block as a single region and extract the code only."
+
+    # prompts = "<image>\n<|grounding|>Convert the document to markdown and OCR and Detect the code region and Extract the code text only."
 
 
-
-    # image_file = '../../Data/241042Y414/test1/a30463f8f8d2b2a4546a9b8f244c4361.jpg'
+    image_file = '../../Data/241042Y414/test1/a30463f8f8d2b2a4546a9b8f244c4361.jpg'
     # image_file = '../../Data/zhangqikui/test1/IMG_20250928_222538.jpg'
-    image_file = r'./20251201220009_504_33.jpg'
+    # image_file = r'./8f79568af86c7fc3ff903f25fccde4ef.jpg'
+    # image_file = r'./92e918d2af7ec92779a03c2c1b105465.jpg'
+    # image_file = r'./68749e9f7995681ba856a5abfb447ec8.jpg'
+
+    # image_file = r'./20251201220009_504_33.jpg'
 
     output_path = './output'
 
@@ -49,13 +57,13 @@ def deepseek_ocr():
                       prompt=prompts,
                       image_file=image_file,
                       output_path=output_path,
-                      save_results=False,
-                      eval_mode=True,
+                      save_results=True,
+                      # eval_mode=True,
                       # output_path=None,  # 不设置输出路径
                       # save_results=False,  # 不保存结果 ， 可获取返回值
-                      base_size=1024,
-                      image_size=640,
-                      crop_mode=True,
+                      base_size=1280,
+                      image_size=1280,
+                      crop_mode=False,
                       test_compress=True
                       )
 

@@ -23,7 +23,7 @@
 > - **编译并运行接口**：要求请求中提供 `recognizedCode`（OCR 的识别结果），以此为输入进行编译和运行。
 > - **生成并持久化评分报告接口**：要求请求中提供 `recognizedCode` 与 `compileResult`（编译并运行的返回结果对象）。`compileResult` 示例见下方，并作为参考字段说明使用。
 >
----
+
 
 ## 接口总览（最小核心集合）
 1. `POST /api/assignments` — 上传作业（Create assignment）  
