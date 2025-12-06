@@ -16,23 +16,13 @@ from core.core_llm.init_deepseek_ocr import global_models
 
 
 def deepseek_ocr(image_file, output_path):
-    # since = time.time()
     model, tokenizer = global_models.get_ocr_model()
 
-    # prompt = "<image>\nFree OCR. "
-    # 输出了带有检测框信息的markdown格式结果
-    # prompt = "<image>\n<|grounding|>Convert the document to markdown. "
 
     # 输出只有结果的格式
-    prompts = "<image>\n<|grounding|>Convert the document to markdown.Extract the code text only."
-    # prompts = "<image>\n<|grounding|>OCR the text exactly as it appears. Preserve all characters, spacing, and formatting without making any changes."
-    # prompts = "<image>\n<|grounding|>识别图片中的内容"
+    # prompts = "<image>\n<|grounding|>Convert the document to markdown.Extract the code text only."
+    prompts = "<image>\n<|grounding|>Convert the document to markdown and Extract the complete code block as one unified text region and Return a single bounding box covering all the code and fix format errors and code errors. "
 
-    # Tiny: base_size = 512, image_size = 512, crop_mode = False
-    # Small: base_size = 640, image_size = 640, crop_mode = False
-    # Base: base_size = 1024, image_size = 1024, crop_mode = False
-    # Large: base_size = 1280, image_size = 1280, crop_mode = False
-    # Gundam: base_size = 1024, image_size = 640, crop_mode = True
     """
         Gundam:动态调整模型大小，当运行程序的时候，程序占用内存过大，模型动态调整大小，调成小模型，效果不会
     """
@@ -49,16 +39,12 @@ def deepseek_ocr(image_file, output_path):
                       crop_mode=False,
                       test_compress=True
                       )
-    # final = time.time() - since
-    # print("最终时间: ", final)
-    # 匹配并移除第一行的特殊标记
+
+    # 匹配并移除第一每一行的特殊标记
     cleaned_res = re.sub(r'^<\|ref\|>.*?<\|/det\|>\s*\n?', '', res, flags=re.MULTILINE)
-    # print(cleaned_res)
     return cleaned_res
 
 if __name__ == '__main__':
-    # image_file = '../../Data/241042Y414/test1/a30463f8f8d2b2a4546a9b8f244c4361.jpg'
-    # image_file = '../../Data/zhangqikui/test1/IMG_20250928_222538.jpg'
     image_file = r'C:\IT\AI\OCR\two_ocr\uploads\processed_image\test.jpg'
     output_path = './output'
 
