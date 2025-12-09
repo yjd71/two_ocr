@@ -88,23 +88,24 @@ def paddle_ocr(image, preprocessed_image_save_path=None):
     # 加载图片
     original_image = load_img(image)
     # 图片预处理
-    # preprocessed_image = preprocess_img_pro(original_image)
+    preprocessed_image = preprocess_img_pro(original_image)
 
     # 构建文件保存
-    # preprocessed_image_save = Image.fromarray(preprocessed_image)  # 转换为 PIL 图像
-    # preprocessed_image_save.save(preprocessed_image_save_path)
+    preprocessed_image_save = Image.fromarray(preprocessed_image)  # 转换为 PIL 图像
+    preprocessed_image_save.save(preprocessed_image_save_path)
 
     # 使用PaddleOCR识别
-    result = ocr_recognition(original_image)
-    return result
+    # result = ocr_recognition(original_image)
+    # return result
 
 
 if __name__ == '__main__':
-    image = '../../Data/zhangqikui/test1/IMG_20250928_222538.jpg'
+    image = r'C:\IT\AI\OCR\two_ocr\Data\2410450131\test1\IMG_20250928_220237.jpg'
     image_id = './img_1.png'
     # image = 'img.png'
     # 使用PaddleOCR识别
-    result = paddle_ocr(image_id)
+    # result = paddle_ocr(image_id)
+    paddle_ocr(image, preprocessed_image_save_path=r"C:\IT\AI\OCR\two_ocr\src\PaddleOCR\pro\1.png")
 
 
     # 输出OCR结果

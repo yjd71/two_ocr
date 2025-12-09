@@ -21,7 +21,7 @@ def deepseek_ocr(image_file, output_path):
 
     # 输出只有结果的格式
     # prompts = "<image>\n<|grounding|>Convert the document to markdown.Extract the code text only."
-    prompts = "<image>\n<|grounding|>Convert the document to markdown and Extract the complete code block as one unified text region and Return a single bounding box covering all the code and fix format errors and code errors. "
+    prompts = "<image>\n<|grounding|>Convert the document to markdown and Extract the complete code block as one unified text region and Return a single bounding box covering all the code. "
 
     """
         Gundam:动态调整模型大小，当运行程序的时候，程序占用内存过大，模型动态调整大小，调成小模型，效果不会
@@ -37,7 +37,7 @@ def deepseek_ocr(image_file, output_path):
                       base_size=1280,
                       image_size=1280,
                       crop_mode=False,
-                      test_compress=True
+                      test_compress=False
                       )
 
     # 匹配并移除第一每一行的特殊标记
