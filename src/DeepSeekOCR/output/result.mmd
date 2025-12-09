@@ -1,34 +1,38 @@
+#include <iostream>
+using namespace std;
+const int MAX_SIZE = 5;
+int st[MAX_SIZE], top = -1;
 
-Stack[++top] = value;
-return true;
+void push(int x) {
+    if (top == MAX_SIZE-1)
+        cout << "错误：栈已满\n";
+    else 
+        st[++top] = x; // 进栈：“<x endl”
 }
-bool pop(int& value)
-{
+
+cout << "元素数："<< top + 1 << endl;
+// 空位“MAX SIZE-top-1”未使用
+
+void pop() { }
 if (top == -1)
 {
-cout << "栈为空,无法pop" << endl;
-return false;
+    cout << "错误：栈为空\n"; // (-=-90)
 }
-value = Stack[top--];
-return true;
-}
-bool getTop(int& value)
-{
-if (top == -1)
-{
-cout << "栈为空,无元素" << endl;
-return true;
-}
+else 
+{    
+    cout << "退栈:"<<st[top--]; // <-endl
+}    
+
+cout << "元素数:"<< top+1<<"endl;" //<-max size-top-1<<endl
+
 int main()
 {
-Stack SC(50);
-S.push(30);
-S.push(40);
-int val;
-S.getTop(val);
-cout << "栈顶元素:" << val << endl;
-cout << "剩余空间:" << S.getRemainingSpace() << endl;
-S.pop(val);
-cout << "弹出元素:" << val << endl;
+
+push(10);
+push(20);
+
+pop();
+pop();
+
 return 0;
 }
