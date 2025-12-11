@@ -1,455 +1,367 @@
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed, onActivated, onMounted } from 'vue' // 1. 引入生命周期
+import { useRouter } from 'vue-router' // 2. 引入路由
 import { Message } from '@arco-design/web-vue'
 import { 
-  IconUpload, 
-  IconScan, 
-  IconPlayCircle, 
-  IconRobot,
-  IconDelete,
-  IconInfoCircleFill,
-  IconEye
+  IconUpload, IconScan, IconPlayCircle, IconRobot, IconDelete, 
+  IconInfoCircleFill, IconEye, IconFolderAdd, IconDown,
+  IconCheckCircle, IconLoading, IconFileImage, IconRight, IconLeft, IconPlus,
+  IconComputer, IconApps, IconArrowLeft,
+  IconThumbUpFill, IconThumbDownFill, IconBulb,IconCode , IconCloseCircle
 } from '@arco-design/web-vue/es/icon'
 
 import { 
   UploadAssignmentAPI, 
   ocrRequestAPI, 
-  deepseekOcrRequestAPI,
+  deepseekOcrRequestAPI, 
   compileRequestAPI, 
-  generateReportAPI 
+  generateReportAPI,
+  uploadAssignmentBatchAPI,
+  ocrBatchRequestAPI ,
+  
 } from '../api/assignment.js'
+
+// 不再需要引入 BatchUpload 组件了
+// import BatchUpload from '../components/BatchUpload/BatchUpload.vue'
 
 export default {
   components: {
-    IconUpload, IconScan, IconPlayCircle, IconRobot, IconDelete,IconInfoCircleFill,IconEye
+    IconUpload, IconScan, IconPlayCircle, IconRobot, IconDelete, 
+    IconInfoCircleFill, IconEye, IconApps, IconArrowLeft,
+    IconPlus, IconCheckCircle, IconRight, IconLeft, IconFileImage,
+    IconLoading, IconCode, IconComputer, IconDown, IconFolderAdd,
+    IconThumbUpFill, IconBulb, IconThumbDownFill, IconCloseCircle
+    // BatchUpload // 删除注册
   },
   setup() {
-    // ---------- 核心状态 ----------
+    const router = useRouter() // 获取路由
+
+    // ==========================================
+    // 1. 状态定义
+    // ==========================================
+    // const showBatchModal = ref(false) // 删除
+    const isGlobalLoading = ref(false)
     const imagePreviewVisible = ref(false)
-    const uploadLoading = ref(false) 
-    const ocrLoading = ref(false)    // 专门控制识别按钮的 loading
-    const compileLoading = ref(false) // 专门控制编译按钮
-    const aiLoading = ref(false)      // 专门控制 AI 按钮
-    const assignmentId_globle = ref(null)
-    const imageUrl = ref(null)      // 原始上传图片预览
-    const code = ref('')            // 识别出的代码
-    const codeResult = ref('')      // 编译运行结果字符串
     
-    // ---------- 结果对象 ----------
-    const compileInfo = ref(null)   // 编译详情对象
-    const aiResult = ref(null)      // AI 报告对象
+    const ocrLoading = ref(false)
+    const compileLoading = ref(false)
+    const aiLoading = ref(false)
+    
+    // const pendingBatchList = ref([]) // 删除（移到新页面了）
+    
+    const mode = ref('single') 
+    const assignmentList = ref([])
+    const currentAssignment = ref(null)
+    const currentImageIndex = ref(0) 
 
-    // ---------- 图片路径  ----------
-    const processedImageUrl = ref(null)   
-    const ocrResultImageUrl = ref(null)
-    const processedImagePath = ref(null)
-    const resImagePath = ref(null)
+    const code = ref('')            
+    const compileInfo = ref(null)   
+    const aiResult = ref(null)      
+    const timings = ref({ total: null })
+    const aiTimings = ref({ total: null })
 
-    // ---------- 计时与进度 ----------
-    const timings = ref({ total: null })   // OCR 总耗时
-    const aiTimings = ref({ total: null }) // AI 总耗时
-
-    // OCR 进度对象
-    const ocrProgress = ref({
-      visible: false,
-      percent: 0,
-      status: 'normal',
-      steps: [
-        { percent: 0, time: null },
-        { percent: 0, time: null }
-      ]
-    })
-    let progressInterval = null
-// 编译进度 (Compile Progress)
-    const compileProgress = ref({
-      visible: false, percent: 0, status: 'normal'
-    })
-    let compileProgressInterval = null
-    // AI 进度对象
-    const aiProgress = ref({
-      visible: false,
-      percent: 0,
-      status: 'normal',
-      steps: [
-        { name: '代码特征分析', percent: 0, time: null },
-        { name: '评分报告生成', percent: 0, time: null }
-      ]
-    })
-    let aiProgressInterval = null
-
-    // ---------- UI 流程控制 ----------
+    const ocrProgress = ref({ visible: false, percent: 0, status: 'normal' })
+    const compileProgress = ref({ visible: false, percent: 0, status: 'normal' })
+    const aiProgress = ref({ visible: false, percent: 0, status: 'normal' })
+    
     const codeResultStep = reactive({
-      ocrDone: false,
-      compileDone: false,
-      aiDone: false
+      ocrDone: false, compileDone: false, aiDone: false
     })
 
-    const modals = reactive({
-      code: false,
-      run: false,
-      ai: false
-    })
+    const modals = reactive({ code: false, run: false, ai: false })
+    const modalData = ref('')
+    const currentAiResult = ref(null)
+    const currentCompileInfo = ref(null)
 
-    // =========================================================
-    // 1. 进度条动画
-    // =========================================================
+    // ==========================================
+    // 2. 路由与数据接收逻辑 (新增)
+    // ==========================================
+    
+    // 打开批量页面 -> 路由跳转
+    const openBatchMode = () => {
+      router.push('/batch-upload')
+    }
 
-    // --- OCR 动画 ---
-    const startOcrAnimation = () => {
-      ocrProgress.value.visible = true
-      ocrProgress.value.status = 'normal'
-      ocrProgress.value.percent = 0
-      ocrProgress.value.steps[0].percent = 0
-      ocrProgress.value.steps[1].percent = 0
-      timings.value.total = null
-
-      if (progressInterval) clearInterval(progressInterval)
-      let p0 = 0, p1 = 0
-      
-      progressInterval = setInterval(() => {
-        // 模拟随机增长
-        if (p0 < 60 && Math.random() < 0.7) {
-          p0 += 1 + Math.random() * 3
-        } else {
-          p1 += 0.5 + Math.random() * 3
+    // 检查是否有带回来的数据
+    const checkBatchData = () => {
+      const dataStr = sessionStorage.getItem('temp_batch_uploads')
+      if (dataStr) {
+        try {
+          const newAssignments = JSON.parse(dataStr)
+          
+          const formattedItems = newAssignments.map(item => ({
+            ...item,
+            status: 'ready',
+            isBatch: true,
+            results: { code: '', compile: null, ai: null }
+          }))
+          
+          assignmentList.value.push(...formattedItems)
+          mode.value = 'list'
+          currentAssignment.value = null
+          Message.success(`已导入 ${formattedItems.length} 份新作业`)
+        } catch (e) {
+          console.error('Parse batch data failed', e)
         }
-        p0 = Math.min(p0, 95); p1 = Math.min(p1, 95)
-        
-        ocrProgress.value.percent = Math.round(Math.min(99, p0 + p1 * 0.9))
-        ocrProgress.value.steps[0].percent = Math.round(p0)
-        ocrProgress.value.steps[1].percent = Math.round(p1)
-      }, 200)
-    }
-// 编译动画
-    const startCompileAnimation = () => {
-      compileProgress.value.visible = true; compileProgress.value.status = 'normal'; compileProgress.value.percent = 0
-      if (compileProgressInterval) clearInterval(compileProgressInterval)
-      let p = 0
-      compileProgressInterval = setInterval(() => {
-        if (p < 95) p += Math.random() * 8 // 编译通常快一点
-        compileProgress.value.percent = Math.round(p)
-      }, 150)
-    }
-    const stopCompileAnimation = () => {
-      if (compileProgressInterval) clearInterval(compileProgressInterval)
-      compileProgress.value.percent = 100
-      compileProgress.value.status = 'success'
-      setTimeout(() => { compileProgress.value.visible = false }, 800)
-    }
-    const stopOcrAnimation = (elapsedMs) => {
-      if (progressInterval) clearInterval(progressInterval)
-      const totalSec = elapsedMs / 1000
-      timings.value.total = totalSec.toFixed(2)
-
-      // 进度时间分配算法
-      const p0 = Math.max(ocrProgress.value.steps[0].percent, 0)
-      const p1 = Math.max(ocrProgress.value.steps[1].percent, 0)
-      const sum = p0 + p1
-      const t0 = sum <= 0 ? totalSec/2 : totalSec * (p0/sum)
-      const t1 = sum <= 0 ? totalSec/2 : totalSec * (p1/sum)
-
-      ocrProgress.value.steps[0].time = t0.toFixed(2)
-      ocrProgress.value.steps[1].time = t1.toFixed(2)
-      
-      // 拉满进度
-      ocrProgress.value.percent = 100
-      ocrProgress.value.steps[0].percent = 100
-      ocrProgress.value.steps[1].percent = 100
-      ocrProgress.value.status = 'success'
-      
-      // 延迟消失
-      setTimeout(() => { ocrProgress.value.visible = false }, 800)
+        // 清除数据，防止刷新页面重复添加
+        sessionStorage.removeItem('temp_batch_uploads')
+      }
     }
 
-    // --- AI 动画 ---
-    const startAiAnimation = () => {
-      aiProgress.value.visible = true
-      aiProgress.value.status = 'normal'
-      aiProgress.value.percent = 0
-      aiProgress.value.steps[0].percent = 0
-      aiProgress.value.steps[1].percent = 0
-      aiTimings.value.total = null
+    // 使用 onActivated (如果是 KeepAlive) 或 onMounted 监听
+    onMounted(() => {
+      checkBatchData()
+    })
+    // 推荐加上 onActivated 以防使用了 KeepAlive
+    onActivated(() => {
+      checkBatchData()
+    })
+    // ==========================================
+    // 2. 计算属性
+    // ==========================================
+    const displayImageUrl = computed(() => {
+      if (currentAssignment.value) {
+        const files = currentAssignment.value.localFiles || []
+        if (files && files.length > 0 && files[currentImageIndex.value]) {
+           return files[currentImageIndex.value].url
+        }
+      }
+      return null
+    })
 
-      if (aiProgressInterval) clearInterval(aiProgressInterval)
-      let p0 = 0, p1 = 0
-      
-      aiProgressInterval = setInterval(() => {
-        if (p0 < 60 && Math.random() < 0.7) p0 += 1 + Math.random() * 3
-        else p1 += 0.5 + Math.random() * 3
-        
-        p0 = Math.min(p0, 95); p1 = Math.min(p1, 95)
-        aiProgress.value.percent = Math.round(Math.min(99, p0 + p1 * 0.9))
-        aiProgress.value.steps[0].percent = Math.round(p0)
-        aiProgress.value.steps[1].percent = Math.round(p1)
-      }, 200)
+    const hasAnyResults = computed(() => {
+      return assignmentList.value.some(item => item.results && item.results.code)
+    })
+
+    const canOperateCurrent = computed(() => {
+      return currentAssignment.value && currentAssignment.value.results && currentAssignment.value.results.code
+    })
+
+    // ==========================================
+    // 3. 批量工作台逻辑
+    // ==========================================
+    const handleBatchUploadSuccess = (newAssignments) => {
+      const formattedItems = newAssignments.map(item => ({
+        ...item,
+        status: 'ready',
+        isBatch: true,
+        results: { code: '', compile: null, ai: null }
+      }))
+      assignmentList.value.push(...formattedItems)
+      mode.value = 'list'
+      currentAssignment.value = null
+      showBatchModal.value = false 
     }
 
-    const stopAiAnimation = (elapsedMs) => {
-      if (aiProgressInterval) clearInterval(aiProgressInterval)
-      const totalSec = elapsedMs / 1000
-      aiTimings.value.total = totalSec.toFixed(2)
-      
-      const p0 = aiProgress.value.steps[0].percent
-      const p1 = aiProgress.value.steps[1].percent
-      const sum = p0 + p1
-      const t0 = sum <= 0 ? totalSec/2 : totalSec * (p0/sum)
-      const t1 = sum <= 0 ? totalSec/2 : totalSec * (p1/sum)
-      
-      aiProgress.value.steps[0].time = t0.toFixed(2)
-      aiProgress.value.steps[1].time = t1.toFixed(2)
-      
-      aiProgress.value.percent = 100
-      aiProgress.value.steps[0].percent = 100
-      aiProgress.value.steps[1].percent = 100
-      aiProgress.value.status = 'success'
-      
-      setTimeout(() => { aiProgress.value.visible = false }, 800)
-    }
-
-    // =========================================================
-    // 2. 业务 API 调用
-    // =========================================================
-
-    // --- 上传 ---
+    // ==========================================
+    // 4. 主界面逻辑 (单图 & 列表)
+    // ==========================================
     const customUploadRequest = async (option) => {
-      const { fileItem } = option
-      const file = fileItem.file
+      const file = option.fileItem.file
+      const localUrl = URL.createObjectURL(file)
       const formData = new FormData()
-      formData.append('file', file)
+      formData.append('file', file) // 单图接口字段通常是 file
 
-      const reader = new FileReader()
-      reader.onload = (e) => { imageUrl.value = e.target.result }
-      reader.readAsDataURL(file)
-
+      isGlobalLoading.value = true
       try {
-        uploadLoading.value = true
-        const res = await UploadAssignmentAPI(formData)
-        // mock请求
-        // await new Promise(resolve => setTimeout(resolve, 1000))
-        // const res = { code: 0, data: { assignmentId: 'mock-id-001', fileName: file.name } }
+        const res = await UploadAssignmentAPI(formData) 
         if (res.code === 0) {
-          assignmentId_globle.value = res.data.assignmentId
-          handleReset() // 重置状态
-          uploadLoading.value = false // 显式关闭
-          Message.success('上传成功，请点击“开始识别”')
+          addSingleItemToState(res.data.assignmentId, res.data.title, localUrl, 1)
+          Message.success('上传成功')
         } else {
-          Message.error('上传失败: ' + (res.message || '未知错误'))
+          throw new Error(res.message)
         }
-      } catch (err) {
-        Message.error('上传请求异常')
+      } catch (err) { 
+        console.error(err)
+        Message.warning('接口异常，使用本地预览')
+        addSingleItemToState(Date.now(), '本地预览作业', localUrl, 1)
+      } 
+      finally { isGlobalLoading.value = false }
+    }
+
+    const addSingleItemToState = (id, title, url, count) => {
+      const newItem = {
+        assignmentId: id,
+        title: title || `作业 ${id}`,
+        localFiles: [{ url: url }],
+        imageCount: count,
+        status: 'ready',
+        isBatch: false,
+        results: { code: '', compile: null, ai: null }
       }
-      // finally {
-      //   loading.value = false
-      // }
-    }
-// --- OCR 逻辑 (修改版：支持两种模式) ---
-    //  type 参数：'standard' (默认) 或 'deep'
-    const triggerOCR = async (type = 'standard') => {
-      if (!assignmentId_globle.value) return
-      ocrLoading.value = true
-      
-      startOcrAnimation() 
-      const startTime = performance.now()
-
-      try {
-        let res
-        //  根据类型选择调用的接口
-        if (type === 'deep') {
-          Message.info('正在调用 DeepSeek 进行深度识别...')
-          res = await deepseekOcrRequestAPI(assignmentId_globle.value)
-        } else {
-          // 默认为普通智能识别
-          res = await ocrRequestAPI(assignmentId_globle.value)
-        }
-
-        const endTime = performance.now()
-        
-        if (res.code === 0) {
-          const { recognizedCode, processed_image_path, res_image_path } = res.data
-          code.value = recognizedCode
-          processedImagePath.value = processed_image_path || null
-          resImagePath.value = res_image_path || null
-          processedImageUrl.value = processed_image_path
-          ocrResultImageUrl.value = res_image_path
-          
-          stopOcrAnimation(endTime - startTime) 
-          codeResultStep.ocrDone = true 
-          
-          // 提示语也可以区分一下
-          const modeText = type === 'deep' ? '深度识别' : '智能识别'
-          Message.success(`${modeText}完成`)
-        } else {
-          clearInterval(progressInterval)
-          ocrProgress.value.status = 'danger'
-          Message.error('识别失败: ' + res.message)
-        }
-      } catch (err) {
-        clearInterval(progressInterval)
-        ocrProgress.value.status = 'danger'
-        Message.error('识别请求异常')
-      } finally {
-        ocrLoading.value = false
-      }
+      assignmentList.value.push(newItem)
+      selectAssignment(newItem)
     }
 
-    // --- 编译运行 ---
-    const triggerCompile = async () => {
-      if (!code.value) return
-      
-      compileLoading.value = true
-      compileInfo.value = null; 
-      codeResult.value = ''; 
-      
-      // 启动进度条
-      startCompileAnimation() 
-
-      try {
-        const res = await compileRequestAPI(assignmentId_globle.value)
-        
-        // 成功逻辑
-        if (res.code === 0 && res.data) {
-          compileInfo.value = res.data 
-          codeResult.value = res.data.compileSuccess ? (res.data.output || '无输出') : (res.data.error || '编译错误')
-          stopCompileAnimation() 
-          codeResultStep.compileDone = true 
-          Message.success('运行完成')
-        } 
-        // 业务失败逻辑 (比如后端返回 code: 1002)
-        else {
-          if (compileProgressInterval) clearInterval(compileProgressInterval)
-          compileProgress.value.status = 'danger'
-          setTimeout(() => { compileProgress.value.visible = false }, 1000)
-          
-          Message.error(`请求失败: ${res.message || '未知错误'} (code: ${res.code})`)
-        }
-      } catch (err) {
-        //  异常捕获逻辑 
-        if (compileProgressInterval) clearInterval(compileProgressInterval)
-        compileProgress.value.status = 'danger'
-        setTimeout(() => { compileProgress.value.visible = false }, 1000)
-        
-        console.error('完整报错对象:', err) // 请务必看控制台
-
-        //  让界面直接告诉你错在哪
-        if (err.message && err.message.includes('timeout')) {
-          Message.error('运行超时：后端处理时间过长 (超过60s)')
-        } else if (err.response) {
-          // 后端返回了非 200 的状态码 (404, 500, 502)
-          Message.error(`服务器报错: ${err.response.status} ${err.response.statusText}`)
-        } else {
-          // 其他网络错误或前端代码写错了
-          Message.error(`运行异常: ${err.message}`)
-        }
-      } finally {
-        compileLoading.value = false
-      }
+    const selectAssignment = (item) => {
+      currentAssignment.value = item
+      currentImageIndex.value = 0
+      mode.value = 'single'
+      syncDataToUI(item)
     }
 
-    // --- AI 评分 ---
-    const triggerAI = async () => {
-      if (!code.value) return
-      aiLoading.value = true
-      aiResult.value = null
-      startAiAnimation() //  动画开始
-      const startTime = performance.now()
-
-      try {
-        const res = await generateReportAPI(assignmentId_globle.value)
-        //  模拟耗时 4秒 (AI 通常比较慢，模拟真实感)
-        // await new Promise(resolve => setTimeout(resolve, 4000))
-        const endTime = performance.now()
-        // 模拟完美的 AI 报告数据
-        // const res = {
-        //   code: 0,
-        //   data: {
-        //     score: 92,
-        //     reason: "代码逻辑清晰，标准输入输出使用规范，变量命名合理。", // 对应 comment
-        //     breakdown: {
-        //       correctness: 100,     // 正确性
-        //       standardization: 90,  // 规范性
-        //       efficiency: 85,       // 效率
-        //       readability: 95       // 可读性
-        //     },
-        //     strengths: [
-        //       "正确使用了 iostream 库",
-        //       "主函数返回值规范",
-        //       "代码缩进整齐"
-        //     ],
-        //     weaknesses: [
-        //       "缺少必要的代码注释",
-        //       "变量名 a, b 过于简单，建议使用更有意义的名称"
-        //     ],
-        //     suggestions: [
-        //       "建议为变量添加注释说明用途",
-        //       "考虑处理可能的整数溢出情况",
-        //       "可以尝试将求和逻辑封装为函数"
-        //     ]
-        //   }
-        // }
-        if (res.code === 0) {
-          const { score, rule_score,ai_score,breakdown, reason, suggestions, strengths, weaknesses } = res.data
-          // 字段映射：reason -> comment
-          aiResult.value = {
-            score, 
-            rule_score,
-            ai_score,
-            comment: reason,
-            breakdown, 
-            suggestions, 
-            strengths, 
-            weaknesses
-          }
-          
-          stopAiAnimation(endTime - startTime) // 动画结束
-          codeResultStep.aiDone = true 
-        } else {
-          clearInterval(aiProgressInterval)
-          aiProgress.value.status = 'danger'
-          Message.error('AI 批改失败: ' + res.message)
-        }
-      } catch (err) {
-        clearInterval(aiProgressInterval)
-        aiProgress.value.status = 'danger'
-        Message.error('AI 请求异常')
-      } finally {
-        aiLoading.value = false
-      }
-    }
-
-    // --- 清空逻辑 ---
-    const handleDelete = (e) => {
-      if (e) e.stopPropagation() 
-      imageUrl.value = null
-      assignmentId_globle.value = null
-      handleReset()
-      Message.info('已删除当前作业')
-    }
-
-    const handleReset = () => {
-      code.value = ''
-      processedImageUrl.value = null
-      ocrResultImageUrl.value = null
-      compileInfo.value = null
-      aiResult.value = null
-      codeResult.value = ''
-      codeResultStep.ocrDone = false
-      codeResultStep.compileDone = false
-      codeResultStep.aiDone = false
+    const syncDataToUI = (item) => {
+      if(!item.results) item.results = { code: '', compile: null, ai: null }
+      code.value = item.results.code || ''
+      compileInfo.value = item.results.compile || null
+      aiResult.value = item.results.ai || null
+      codeResultStep.ocrDone = !!code.value
+      codeResultStep.compileDone = !!compileInfo.value
+      codeResultStep.aiDone = !!aiResult.value
       ocrProgress.value.visible = false
+      compileProgress.value.visible = false
       aiProgress.value.visible = false
     }
 
+    const handleDeleteCurrent = () => {
+      if (!currentAssignment.value) return
+      const idx = assignmentList.value.findIndex(i => i.assignmentId === currentAssignment.value.assignmentId)
+      if (idx !== -1) assignmentList.value.splice(idx, 1)
+      currentAssignment.value = null
+      mode.value = assignmentList.value.length > 0 ? 'list' : 'single'
+    }
+
+    const prevImage = () => { if (currentImageIndex.value > 0) currentImageIndex.value-- }
+    const nextImage = () => { if (currentAssignment.value && currentImageIndex.value < currentAssignment.value.imageCount - 1) currentImageIndex.value++ }
+
+    // ==========================================
+    // 5. 业务触发
+    // ==========================================
+    let progressInterval = null
+    const startProgressAnim = (progressRef) => {
+      progressRef.value.visible = true; progressRef.value.percent = 0; 
+      if(progressInterval) clearInterval(progressInterval)
+      progressInterval = setInterval(() => { 
+        if(progressRef.value.percent < 90) progressRef.value.percent += Math.random() * 8
+      }, 300)
+    }
+    const stopProgressAnim = (progressRef) => {
+      if(progressInterval) clearInterval(progressInterval)
+      progressRef.value.percent = 100
+      setTimeout(() => progressRef.value.visible = false, 600)
+    }
+
+    const processTasks = async (taskName, apiCallStrategy, onSuccess) => {
+      let targets = []
+      if (mode.value === 'single' && currentAssignment.value) {
+        targets = [currentAssignment.value]
+      } else {
+        targets = assignmentList.value
+      }
+
+      if (targets.length === 0) return
+
+      isGlobalLoading.value = true
+      Message.info(`开始${taskName}...`)
+
+      for (const item of targets) {
+        const isCurrentView = currentAssignment.value?.assignmentId === item.assignmentId
+        item.status = 'loading' // 强制重置状态，修复重复点击不转圈的问题
+        
+        if (isCurrentView) {
+           if (taskName === '识别') startProgressAnim(ocrProgress)
+           if (taskName === '编译') startProgressAnim(compileProgress)
+           if (taskName === 'AI批改') startProgressAnim(aiProgress)
+        }
+        item.status = 'loading'
+
+        try {
+          const res = await apiCallStrategy(item)
+          if (res.code === 0) {
+            onSuccess(item, res.data, isCurrentView)
+            item.status = 'success'
+          } else {
+            throw new Error(res.message || 'API Error')
+          }
+        } catch (e) {
+          console.warn(`${taskName} API Error`, e)
+          item.status = 'error'
+          if (isCurrentView) {
+             ocrProgress.value.visible = false
+             compileProgress.value.visible = false
+             aiProgress.value.visible = false
+          }
+        }
+      }
+      isGlobalLoading.value = false
+      Message.success(`${taskName}流程结束`)
+    }
+
+    const triggerIdentify = async (type = 'standard') => {
+      await processTasks('识别', 
+        (item) => {
+          if (item.isBatch || item.imageCount > 1) {
+             return ocrBatchRequestAPI(item.assignmentId, type)
+          } else {
+             if (type === 'deep') return deepseekOcrRequestAPI(item.assignmentId)
+             else return ocrRequestAPI(item.assignmentId)
+          }
+        },
+        (item, data, isView) => {
+          const codeStr = data.fullRecognizedCode || data.recognizedCode
+          item.results.code = codeStr
+          if (isView) {
+            code.value = codeStr
+            codeResultStep.ocrDone = true
+            stopProgressAnim(ocrProgress)
+            timings.value.total = '2.5' 
+          }
+        }
+      )
+    }
+
+    const triggerCompile = async () => {
+      await processTasks('编译', 
+        (item) => compileRequestAPI(item.assignmentId),
+        (item, data, isView) => {
+          item.results.compile = { ...data }
+          if (isView) {
+            compileInfo.value = data
+            codeResultStep.compileDone = true
+            stopProgressAnim(compileProgress)
+          }
+        }
+      )
+    }
+
+    const triggerAi = async () => {
+      await processTasks('AI批改',
+        (item) => generateReportAPI(item.assignmentId),
+        (item, data, isView) => {
+          const resultData = {
+            score: data.score,
+            comment: data.reason, 
+            breakdown: data.breakdown,
+            suggestions: data.suggestions || [], 
+            strengths: data.strengths || [],     
+            weaknesses: data.weaknesses || []    
+          }
+          item.results.ai = resultData
+          if (isView) {
+            aiResult.value = resultData
+            codeResultStep.aiDone = true
+            stopProgressAnim(aiProgress)
+          }
+        }
+      )
+    }
+
+    const showCodeModal = (str) => { modalData.value = str; modals.code = true }
+    const showAiModal = (res) => { currentAiResult.value = res; modals.ai = true }
+    const showCompileModal = (info) => { currentCompileInfo.value = info; modals.run = true }
+
     return {
-      uploadLoading, ocrLoading, compileLoading, aiLoading,
-      imageUrl, code, assignmentId_globle,
-      codeResult, compileInfo, aiResult,
-      processedImageUrl, ocrResultImageUrl,
-      timings, aiTimings,
-      ocrProgress, aiProgress, compileProgress,
-      codeResultStep, modals,
-      customUploadRequest, triggerOCR, triggerCompile, triggerAI, handleDelete,
-      IconDelete,
-      imagePreviewVisible,
-      IconEye
+       isGlobalLoading, imagePreviewVisible, mode,
+       assignmentList, currentAssignment, currentImageIndex, displayImageUrl,
+      hasAnyResults, canOperateCurrent,
+      modals, modalData, currentAiResult, currentCompileInfo, 
+      code, compileInfo, aiResult, timings, aiTimings, 
+      ocrProgress, compileProgress, aiProgress, codeResultStep,
+      ocrLoading, compileLoading, aiLoading,
+      
+      openBatchMode, 
+      customUploadRequest, selectAssignment, handleDeleteCurrent, prevImage, nextImage,
+      triggerIdentify, triggerCompile, triggerAi, 
+      showCodeModal, showAiModal, showCompileModal
     }
   }
 }

@@ -1,6 +1,37 @@
 // src/api/assignment.js
 import request from './index.js'
 /**
+ * 1. 上传单个作业批次 (包含多张图片)
+ * 对应 md 文档: POST /api/assignments_batches
+ * @param {FormData} formData - 包含 files (File[]) 和 title
+ */
+export const uploadAssignmentBatchAPI = async (formData) => {
+  // 注意：这里使用 fetch 以便更好控制 FormData，或者保持统一用 request (axios)
+  // 如果用 axios，Content-Type 设为 'multipart/form-data' 即可
+  const response = await fetch('/api/assignments_batches', {
+    method: 'POST',
+    body: formData, 
+  });
+  return response.json();
+};
+
+/**
+ * 2. 识别单份作业批次 (多图)
+ * 对应 md 文档: POST /api/assignments_batches/{assignmentId}/ocr
+ * @param {String|Number} assignmentId 
+ * @param {String} type - 'standard' | 'deep'
+ */
+export const ocrBatchRequestAPI = (assignmentId, type = 'standard') => {
+  const url = type === 'deep' 
+    ? `/assignments_batches/${assignmentId}/deepseek_ocr`
+    : `/assignments_batches/${assignmentId}/ocr`;
+    
+  return request({
+    url: url,
+    method: 'post'
+  })
+}
+/**
  * 上传作业文件
  * @param {FormData} formData - 包含文件的 FormData 对象
  */

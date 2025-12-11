@@ -1,261 +1,296 @@
 <template>
   <div class="page-background">
     <div class="grader-container">
-      
       <a-row :gutter="40" class="main-row">
         
         <a-col :span="12" style="height: 100%">
           <a-card class="styled-card left-card" :bordered="false">
             <template #title>
-              <div class="card-title">
-                <span class="title-icon">📤</span> 原始作业上传
-              </div>
+              <div class="card-title"><span class="title-icon">📂</span> 作业管理中心</div>
             </template>
-            
-            <div class="upload-wrapper-layer">
-              <div v-if="imageUrl" class="preview-btn" @click.stop="imagePreviewVisible = true">
-                <icon-eye />
+
+            <div class="toolbar-row">
+              <div class="status-text">
+                <span v-if="assignmentList.length > 0">已就绪: <b>{{ assignmentList.length }}</b> 份</span>
+                <span v-else class="text-gray">支持单图或批量上传</span>
               </div>
-              <div v-if="imageUrl" class="delete-btn" @click.stop="handleDelete"><icon-delete /></div>
-              <div class="visual-layer">
-                <div v-if="imageUrl" class="preview-mode">
-                  <img :src="imageUrl" class="preview-img" />
-                  <div class="re-upload-tip">点击任意处更换</div>
-                </div>
-                <div v-else class="empty-mode">
-                  <div class="icon-bg">
-                    <icon-upload class="upload-icon" />
+              <div class="action-group">
+                <a-button type="primary" status="success" size="small" @click="openBatchMode">
+                  <template #icon><icon-folder-add /></template> 批量上传
+                </a-button>
+              </div>
+            </div>
+
+            <div class="card-content-area">
+              <div v-if="mode === 'list' && assignmentList.length > 0" class="file-list-view">
+                <div class="scrollable-list">
+                  <div 
+                    v-for="item in assignmentList" 
+                    :key="item.assignmentId" 
+                    class="file-list-item animate-in"
+                    :class="{ 
+                      active: currentAssignment?.assignmentId === item.assignmentId,
+                      'is-loading': item.status === 'loading'
+                    }"
+                    @click="selectAssignment(item)"
+                  >
+                    <div class="item-icon">
+                      <icon-loading v-if="item.status === 'loading'" spin style="color: #165dff"/>
+                      <icon-check-circle v-else-if="item.status === 'success'" style="color: #00b42a"/>
+                      <icon-close-circle v-else-if="item.status === 'error'" style="color: #f53f3f"/>
+                      <icon-file-image v-else />
+                    </div>
+                    
+                    <div class="item-info">
+                      <div class="item-title">{{ item.title }}</div>
+                      <div class="item-desc">
+                        ID: {{ item.assignmentId }} | {{ item.imageCount }} 张图片
+                        <span v-if="item.status === 'loading'" style="color: #165dff; margin-left: 8px;">(处理中...)</span>
+                      </div>
+                    </div>
+                    <div class="item-arrow"><icon-right /></div>
                   </div>
-                  <div class="upload-main-text">点击或拖拽上传作业图片</div>
-                  <div class="upload-sub-text">支持 JPG, PNG, BMP 格式</div>
+                </div>
+                <div class="list-footer-add">
+                  <a-upload :custom-request="customUploadRequest" :show-file-list="false">
+                    <template #upload-button><a-button long dashed><icon-plus /> 快速上传单份作业</a-button></template>
+                  </a-upload>
                 </div>
               </div>
-              <a-upload
-                class="invisible-uploader"
-                draggable
-                :show-file-list="false"
-                :custom-request="customUploadRequest"
-              />
+
+              <div v-else class="upload-wrapper-layer">
+                <div v-if="assignmentList.length > 0" class="back-floater" @click.stop="mode = 'list'">
+                  <icon-arrow-left /> 返回列表
+                </div>
+
+                <div v-if="displayImageUrl" class="preview-btn" @click.stop="imagePreviewVisible = true">
+                  <icon-eye />
+                </div>
+                <div v-if="displayImageUrl" class="delete-btn" @click.stop="handleDeleteCurrent">
+                  <icon-delete />
+                </div>
+
+                <div class="visual-layer">
+                  <div v-if="displayImageUrl" class="preview-mode">
+                    <img :src="displayImageUrl" class="preview-img" />
+                    <div v-if="currentAssignment && currentAssignment.imageCount > 1" class="pagination-pill">
+                      <span @click.stop="prevImage"><icon-left /></span>
+                      <span>{{ currentImageIndex + 1 }} / {{ currentAssignment.imageCount }}</span>
+                      <span @click.stop="nextImage"><icon-right /></span>
+                    </div>
+                  </div>
+                  <div v-else class="empty-mode">
+                    <div class="dashed-border-box">
+                      <div class="icon-bg"><icon-upload class="upload-icon" /></div>
+                      <div class="upload-main-text">点击或拖拽上传作业图片</div>
+                      <div class="upload-sub-text">支持 JPG, PNG, BMP 格式</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <a-upload v-if="!displayImageUrl" class="invisible-uploader" draggable :show-file-list="false" :custom-request="customUploadRequest" />
+              </div>
             </div>
             
             <div class="left-footer">
-               <a-dropdown @select="triggerOCR" position="top" :disabled="!assignmentId_globle">
-                 <a-button type="primary" size="large" long class="action-btn-main" 
-                   :loading="ocrLoading" 
-                   :disabled="!assignmentId_globle"
-                 >
-                    <template #icon><icon-scan /></template>
-                    开始识别
+               <a-dropdown @select="triggerIdentify" position="top" :disabled="assignmentList.length === 0">
+                 <a-button type="primary" size="large" long class="action-btn-main" :loading="isGlobalLoading">
+                    <template #icon><icon-scan /></template> 
+                    {{ mode === 'list' && assignmentList.length > 1 ? `批量识别 (${assignmentList.length}份)` : '开始识别' }}
                     <icon-down style="margin-left: 8px"/>
                  </a-button>
                  <template #content>
-                   <a-doption value="standard">⚡ 智能识别 (快速)</a-doption>
-                   <a-doption value="deep">🧠 深度识别 (DeepSeek)</a-doption>
+                   <a-doption value="standard">⚡ 智能识别</a-doption>
+                   <a-doption value="deep">🧠 深度识别</a-doption>
                  </template>
                </a-dropdown>
             </div>
-            
-            </a-card>
+          </a-card>
         </a-col>
   
         <a-col :span="12" style="height: 100%">
           <a-card class="styled-card right-card" :bordered="false">
             <template #title>
-              <div class="card-title">
-                <span class="title-icon">📊</span> 识别与处理结果
-              </div>
+              <div class="card-title"><span class="title-icon">📊</span> 结果分析</div>
             </template>
             
             <div class="result-stream">
-              <div v-if="!codeResultStep.ocrDone && !ocrProgress.visible" class="empty-state">
+              <div v-if="!hasAnyResults && !isGlobalLoading && !ocrProgress.visible" class="empty-state">
                  <div class="empty-icon-bg"><icon-scan style="font-size: 32px; color: #c9cdd4;" /></div>
-                 <p>请在左侧上传图片并点击“开始识别”</p>
-                 <p class="sub">识别结果将在此处展示</p>
-              </div>
-  
-              <div v-if="ocrProgress.visible" class="progress-card animate-in">
-                <div class="progress-header">
-                  <span class="loading-text">🔄 正在进行文字识别...</span>
-                  <span class="percentage">{{ ocrProgress.percent }}%</span>
-                </div>
-                <a-progress :percent="ocrProgress.percent/100" :status="ocrProgress.status" :show-text="false" size="large" :color="{ '0%': '#165dff', '100%': '#722ed1' }" />
-              </div>
-  
-              <div v-if="codeResultStep.ocrDone && !ocrProgress.visible" class="result-item animate-in">
-                <a-alert type="success" show-icon :title="null" class="styled-alert">
-                  <div class="alert-content">
-                    <span>✅ 识别成功 <span class="time-tag">({{ timings.total }}s)</span></span>
-                    <a-button type="text" size="small" @click="modals.code = true">查看代码</a-button>
-                  </div>
-                </a-alert>
+                 <p>请上传作业并点击“开始识别”</p>
               </div>
 
-              <div v-if="compileProgress.visible" class="progress-card animate-in">
-                <div class="progress-header">
-                  <span class="loading-text">⚡ 正在编译运行代码...</span>
-                  <span class="percentage">{{ compileProgress.percent }}%</span>
-                </div>
-                <a-progress :percent="compileProgress.percent/100" :status="compileProgress.status" :show-text="false" size="large" :color="{ '0%': '#00b42a', '100%': '#86df6b' }" />
+              <div v-else-if="mode === 'list'" class="batch-result-list">
+                 <transition-group name="list-anim">
+                   <div 
+                      v-for="item in assignmentList" 
+                      :key="item.assignmentId" 
+                      v-show="item.results && item.results.code" 
+                      class="result-card-wrapper"
+                   >
+                      <div class="result-card-header">
+                        <span class="res-title">{{ item.title }}</span>
+                        <a-tag v-if="item.results.ai?.score" color="green">{{ item.results.ai.score }}分</a-tag>
+                        <a-tag v-else-if="item.results.code" color="blue">识别完成</a-tag>
+                      </div>
+                      <div class="res-row">
+                         <span style="font-size:12px; color:#86909c">
+                           状态: {{ item.results.ai ? 'AI批改完成' : (item.results.compile ? '编译完成' : 'OCR完成') }}
+                         </span>
+                         <a-button type="text" size="mini" @click="selectAssignment(item)">查看详情 <icon-right/></a-button>
+                      </div>
+                   </div>
+                 </transition-group>
               </div>
-  
-              <div v-if="codeResultStep.compileDone && !compileProgress.visible" class="result-item animate-in">
-                <a-alert :type="compileInfo?.compileSuccess ? 'success' : 'error'" show-icon :title="null" class="styled-alert">
-                  <div class="alert-content">
-                    <span>{{ compileInfo?.compileSuccess ? '✅ 运行成功' : '❌ 运行失败' }}</span>
-                    <a-button type="text" size="small" @click="modals.run = true">查看详情</a-button>
-                  </div>
-                </a-alert>
-              </div>
-  
-              <div v-if="aiProgress.visible" class="progress-card animate-in">
-                <div class="progress-header">
-                  <span class="loading-text">🤖 正在生成 AI 评分报告...</span>
-                  <span class="percentage">{{ aiProgress.percent }}%</span>
+
+              <div v-else-if="currentAssignment" class="single-detail-stream">
+                <div v-if="ocrProgress.visible" class="progress-card animate-in">
+                  <div class="progress-header"><span class="loading-text">🔄 识别中...</span><span class="percentage">{{ Math.round(ocrProgress.percent) }}%</span></div>
+                  <a-progress :percent="ocrProgress.percent/100" status="active" :show-text="false" />
                 </div>
-                <a-progress :percent="aiProgress.percent/100" :status="aiProgress.status" :show-text="false" size="large" :color="{ '0%': '#ff7d00', '100%': '#f53f3f' }"/>
-                <div class="steps-detail">
-                  <div class="step-item"><span>🔍 代码分析</span><a-progress :percent="aiProgress.steps[0].percent/100" style="width:50px" size="mini" :show-text="false"/></div>
-                  <div class="step-item"><span>📄 报告生成</span><a-progress :percent="aiProgress.steps[1].percent/100" style="width:50px" size="mini" :show-text="false"/></div>
+                
+                <div v-if="currentAssignment.results?.code" class="result-item animate-in">
+                  <a-alert type="success" :show-icon="false" class="styled-alert">
+                    <div class="alert-content"><span>✅ 识别成功</span><a-button type="text" size="small" @click="showCodeModal(currentAssignment.results.code)">查看代码</a-button></div>
+                  </a-alert>
                 </div>
-              </div>
-  
-              <div v-if="codeResultStep.aiDone && !aiProgress.visible" class="result-item animate-in">
-                <a-alert type="success" show-icon :title="null" class="styled-alert">
-                  <div class="alert-content">
-                    <span>🤖 AI 批改完成 <span class="time-tag">(得分: {{ aiResult?.score || 0 }}, {{ aiTimings.total }}s)</span></span>
-                    <a-button type="text" size="small" @click="modals.ai = true">查看报告</a-button>
-                  </div>
-                </a-alert>
+
+                <div v-if="compileProgress.visible" class="progress-card animate-in">
+                   <div class="progress-header"><span class="loading-text">⚡ 正在编译...</span></div>
+                   <a-progress :percent="compileProgress.percent/100" status="warning" :show-text="false" />
+                </div>
+
+                <div v-if="currentAssignment.results?.compile" class="result-item animate-in">
+                  <a-alert :type="currentAssignment.results.compile.compileSuccess ? 'success' : 'error'" :show-icon="false" class="styled-alert">
+                    <div class="alert-content">
+                      <span>{{ currentAssignment.results.compile.compileSuccess ? '✅ 编译成功' : '❌ 编译失败' }}</span>
+                      <a-button type="text" size="small" @click="showCompileModal(currentAssignment.results.compile)">详情</a-button>
+                    </div>
+                  </a-alert>
+                </div>
+
+                <div v-if="aiProgress.visible" class="progress-card animate-in">
+                   <div class="progress-header"><span class="loading-text">🤖 AI 正在批改...</span></div>
+                   <a-progress :percent="aiProgress.percent/100" status="success" :show-text="false" />
+                </div>
+
+                <div v-if="currentAssignment.results?.ai" class="result-item animate-in">
+                  <a-alert type="success" :show-icon="false" class="styled-alert">
+                    <div class="alert-content">
+                      <span>🤖 AI 批改完成 (得分: {{ currentAssignment.results.ai.score }})</span>
+                      <a-button type="text" size="small" @click="showAiModal(currentAssignment.results.ai)">查看报告</a-button>
+                    </div>
+                  </a-alert>
+                </div>
               </div>
             </div>
             
             <div class="right-footer-actions">
               <a-space size="large">
-                <a-button type="primary" status="success" shape="round" size="large" 
-                  @click="triggerCompile" 
-                  :loading="compileLoading" 
-                  :disabled="!codeResultStep.ocrDone || ocrLoading || compileProgress.visible"
-                >
-                  <template #icon><icon-play-circle /></template>
-                  {{ codeResultStep.ocrDone ? '编译运行' : '等待识别...' }}
-                </a-button>
-  
-                <a-button type="primary" status="warning" shape="round" size="large" 
-                  @click="triggerAI" 
-                  :loading="aiLoading" 
-                  :disabled="!codeResultStep.ocrDone || ocrLoading || aiProgress.visible"
-                >
-                  <template #icon><icon-robot /></template>
-                  {{ codeResultStep.ocrDone ? 'AI 智能批改' : '等待识别...' }}
-                </a-button>
+                <a-button type="primary" status="success" shape="round" @click="triggerCompile" :loading="isGlobalLoading" :disabled="mode === 'single' ? !canOperateCurrent : !hasAnyResults"><template #icon><icon-play-circle /></template> 编译运行</a-button>
+                <a-button type="primary" status="warning" shape="round" @click="triggerAi" :loading="isGlobalLoading" :disabled="mode === 'single' ? !canOperateCurrent : !hasAnyResults"><template #icon><icon-robot /></template> AI 批改</a-button>
               </a-space>
             </div>
           </a-card>
         </a-col>
       </a-row>
-<a-image-preview
-        :src="imageUrl"
-        v-model:visible="imagePreviewVisible"
-      />
-      <div class="mode-info-box">
-        <div class="info-title">
-          <icon-info-circle-fill /> 模式说明
-        </div>
-        <div class="info-grid">
-          <div class="info-item">
-            <span class="info-label">⚡ 智能识别：</span>
-            <span class="info-text">采用 Paddle-OCR 模型，适用于印刷体和简单的手写体，快速方便识别。</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">🧠 深度识别：</span>
-            <span class="info-text">采用 DeepSeek 模型，适用于复杂的识别场景，识别精度高但耗时较长。</span>
-          </div>
-        </div>
-      </div>
-  
-      <a-modal v-model:visible="modals.code" title="代码预览" width="700px" :footer="false">
+
+      <a-image-preview :src="displayImageUrl" v-model:visible="imagePreviewVisible" />
+    <a-modal v-model:visible="modals.code" title="📄 代码识别结果" width="700px" :footer="false">
         <div class="code-box">
-          <a-textarea v-model="code" :auto-size="{ minRows: 10, maxRows: 25 }" readonly />
+          <a-textarea v-model="modalData" :auto-size="{ minRows: 10, maxRows: 25 }" readonly />
+        </div>
+      </a-modal>      
+<a-modal v-model:visible="modals.run" title="🖥️ 编译运行详情" width="700px" :footer="false">
+        <div v-if="currentCompileInfo">
+          <a-descriptions :column="2" bordered size="small" layout="inline-horizontal" style="margin-bottom: 20px">
+            <a-descriptions-item label="运行状态">
+              <a-tag :color="currentCompileInfo.compileSuccess ? 'green' : 'red'">
+                {{ currentCompileInfo.compileSuccess ? '✅ 编译成功' : '❌ 编译失败' }}
+              </a-tag>
+            </a-descriptions-item>
+            <a-descriptions-item label="编程语言">{{ currentCompileInfo.language || 'C++' }}</a-descriptions-item>
+            <a-descriptions-item label="评测耗时">{{ currentCompileInfo.evalTime || '0ms' }}</a-descriptions-item>
+            <a-descriptions-item label="代码长度">{{ currentCompileInfo.codeLengthBytes || 0 }} Bytes</a-descriptions-item>
+          </a-descriptions>
+          <div style="font-weight:bold; margin-bottom:8px; color:#1d2129;">终端输出 (Output / Error):</div>
+          <div class="terminal-box" :class="{ 'is-error': !currentCompileInfo.compileSuccess }">
+            {{ currentCompileInfo.output || currentCompileInfo.error || '无输出' }}
+          </div>
+        </div>
+      </a-modal>      
+    <a-modal v-model:visible="modals.ai" title="🧠 AI 智能批改报告" width="800px" :footer="false">
+        <div v-if="currentAiResult" class="ai-report-container">
+           <a-alert type="success" :show-icon="false" style="margin-bottom:20px; border-radius:8px">
+             <a-row align="middle" :gutter="24">
+                <a-col :span="5" style="text-align: center; border-right: 1px solid #e5e6eb;">
+                  <div style="font-size: 13px; color: #86909c;">综合得分</div>
+                  <div style="font-size: 38px; font-weight: bold; color: #00b42a; line-height:1;">
+                    {{ currentAiResult.score }}
+                  </div>
+                </a-col>
+                <a-col :span="19">
+                  <div style="font-weight: bold; margin-bottom: 6px;">综合评语</div>
+                  <div style="color: #4e5969; font-size: 13px;">{{ currentAiResult.comment }}</div>
+                </a-col>
+             </a-row>
+           </a-alert>
+
+           <a-descriptions title="📊 维度分析" :column="2" bordered size="small">
+              <a-descriptions-item label="正确性">
+                 <a-progress :percent="(currentAiResult.breakdown?.correctness || 0)/100" status="success" style="width: 80px"/>
+                 <span style="margin-left:8px; font-weight:bold">{{ currentAiResult.breakdown?.correctness }}</span>
+              </a-descriptions-item>
+              <a-descriptions-item label="规范性">
+                 <a-progress :percent="(currentAiResult.breakdown?.standardization || 0)/100" status="normal" style="width: 80px"/>
+                 <span style="margin-left:8px; font-weight:bold">{{ currentAiResult.breakdown?.standardization }}</span>
+              </a-descriptions-item>
+              <a-descriptions-item label="效率">
+                 <a-progress :percent="(currentAiResult.breakdown?.efficiency || 0)/100" status="warning" style="width: 80px"/>
+                 <span style="margin-left:8px; font-weight:bold">{{ currentAiResult.breakdown?.efficiency }}</span>
+              </a-descriptions-item>
+              <a-descriptions-item label="可读性">
+                 <a-progress :percent="(currentAiResult.breakdown?.readability || 0)/100" status="info" style="width: 80px"/>
+                 <span style="margin-left:8px; font-weight:bold">{{ currentAiResult.breakdown?.readability }}</span>
+              </a-descriptions-item>
+           </a-descriptions>
+
+           <div class="feedback-grid">
+             <div class="feedback-card pros">
+               <div class="feedback-header" style="color: #00b42a;"><icon-thumb-up-fill /> 亮点</div>
+               <ul class="feedback-list">
+                 <li v-for="(s, i) in currentAiResult.strengths" :key="'s'+i">{{ s }}</li>
+                 <li v-if="!currentAiResult.strengths?.length" style="color:#aaa">暂无明显亮点</li>
+               </ul>
+             </div>
+             <div class="feedback-card cons">
+               <div class="feedback-header" style="color: #f53f3f;"><icon-thumb-down-fill /> 不足</div>
+               <ul class="feedback-list">
+                 <li v-for="(w, i) in currentAiResult.weaknesses" :key="'w'+i">{{ w }}</li>
+                 <li v-if="!currentAiResult.weaknesses?.length" style="color:#aaa">暂无明显不足</li>
+               </ul>
+             </div>
+           </div>
+           
+           <div class="suggestion-box" style="margin-top:15px">
+             <div class="suggestion-title"><icon-bulb /> 建议</div>
+             <div class="suggestion-item" v-for="(s, i) in currentAiResult.suggestions" :key="i">
+               <div class="idx-badge">{{ i+1 }}</div>
+               <div>{{ s }}</div>
+             </div>
+           </div>
         </div>
       </a-modal>
 
-      <a-modal v-model:visible="modals.run" title="🖥️ 编译运行详情" width="600px" :footer="false">
-      <div v-if="compileInfo">
-        <a-descriptions :column="2" bordered size="small" layout="inline-horizontal">
-          <a-descriptions-item label="运行状态">
-            <a-tag :color="compileInfo.compileSuccess ? 'green' : 'red'">{{ compileInfo.compileSuccess ? '✅ 编译成功' : '❌ 编译失败' }}</a-tag>
-          </a-descriptions-item>
-          <a-descriptions-item label="编程语言">{{ compileInfo.language || 'Unknown' }}</a-descriptions-item>
-          <a-descriptions-item label="评测耗时">{{ compileInfo.evalTime || '0ms' }}</a-descriptions-item>
-          <a-descriptions-item label="代码长度">{{ compileInfo.codeLengthBytes || 0 }} Bytes</a-descriptions-item>
-          <a-descriptions-item label="提交时间" :span="2">{{ compileInfo.submitTime || '-' }}</a-descriptions-item>
-        </a-descriptions>
-        <a-divider orientation="left" style="margin: 15px 0 10px 0;">终端输出</a-divider>
-        <div class="terminal-box" :class="{ 'is-error': !compileInfo.compileSuccess }">
-          {{ compileInfo.compileSuccess ? (compileInfo.output || '无输出') : (compileInfo.error || '编译失败') }}
-        </div>
-      </div>
-    </a-modal>
-
-    <a-modal v-model:visible="modals.ai" title="🧠 AI 智能批改报告" width="800px" :footer="false">
-      <div v-if="aiResult" class="ai-report">
-        <a-alert type="success" :show-icon="false" style="margin-bottom: 20px;">
-          <a-row align="middle" :gutter="24">
-            <a-col :span="6" style="text-align: center; border-right: 1px solid #e5e6eb;">
-              <div style="font-size: 14px; color: #86909c;">综合得分</div>
-              <div style="font-size: 36px; font-weight: bold; color: #00b42a; line-height: 1.2;">{{ aiResult.ai_score }}</div>
-            </a-col>
-            <a-col :span="18">
-              <div style="font-weight: bold; margin-bottom: 5px;">综合评语：</div>
-              <div style="color: #4e5969;">{{ aiResult.comment }}</div>
-            </a-col>
-          </a-row>
-        </a-alert>
-        <a-descriptions title="📊 能力维度分析" :column="2" bordered size="small" style="margin-bottom: 20px;">
-          <a-descriptions-item label="代码正确性">
-            <a-progress :percent="aiResult.breakdown?.correctness / 100" status="success" :show-text="false" style="width: 100px; margin-right: 10px;" />
-            <strong>{{ aiResult.breakdown?.correctness }}</strong> / 100
-          </a-descriptions-item>
-          <a-descriptions-item label="代码规范性">
-             <a-progress :percent="aiResult.breakdown?.standardization / 100" status="normal" :show-text="false" style="width: 100px; margin-right: 10px;" />
-             <strong>{{ aiResult.breakdown?.standardization }}</strong> / 100
-          </a-descriptions-item>
-          <a-descriptions-item label="运行效率">
-             <a-progress :percent="aiResult.breakdown?.efficiency / 100" status="warning" :show-text="false" style="width: 100px; margin-right: 10px;" />
-             <strong>{{ aiResult.breakdown?.efficiency }}</strong> / 100
-          </a-descriptions-item>
-          <a-descriptions-item label="代码可读性">
-             <a-progress :percent="aiResult.breakdown?.readability / 100" status="info" :show-text="false" style="width: 100px; margin-right: 10px;" />
-             <strong>{{ aiResult.breakdown?.readability }}</strong> / 100
-          </a-descriptions-item>
-        </a-descriptions>
-        <a-row :gutter="20">
-          <a-col :span="12">
-            <h4 style="color: #00b42a; margin: 10px 0;">👍 优点</h4>
-            <ul style="padding-left: 20px; color: #4e5969;">
-              <li v-for="(item, i) in aiResult.strengths" :key="'s'+i">{{ item }}</li>
-            </ul>
-          </a-col>
-          <a-col :span="12">
-            <h4 style="color: #f53f3f; margin: 10px 0;">👎 不足</h4>
-            <ul style="padding-left: 20px; color: #4e5969;">
-              <li v-for="(item, i) in aiResult.weaknesses" :key="'w'+i">{{ item }}</li>
-            </ul>
-          </a-col>
-        </a-row>
-        <a-divider />
-        <div>
-          <h4 style="color: #ff7d00; margin: 10px 0;">💡 改进建议</h4>
-          <a-list size="small" :split="false">
-             <a-list-item v-for="(suggestion, i) in aiResult.suggestions" :key="'sg'+i">{{ i + 1 }}. {{ suggestion }}</a-list-item>
-          </a-list>
-        </div>
-      </div>
-    </a-modal>
     </div>
   </div>
 </template>
 
-<script src="./SmartGrader.js"></script>
+<script>
+import Logic from './SmartGrader.js'
+// 不再引入 BatchUpload
+export default { ...Logic }
 
-<style scoped src="./SmartGrader.css"></style>>
+</script>
+
+<style scoped src="./SmartGrader.css"></style>
