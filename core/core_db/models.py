@@ -39,6 +39,29 @@ class Assignment(Base):
     score = relationship("Score", back_populates="assignment", uselist=False)
     image_processes = relationship("ImageProcess", back_populates="assignment")
 
+    # 结构上是“一对多”关系：一个父级 Assignment（作业）可以拥有多个子级 AssignmentBatch（批次），数据库层面通过子表中的 assignment_id 外键指向父表主键来建立连接。
+    batches = relationship("AssignmentBatch", back_populates="assignment", cascade="all, delete-orphan")
+
+
+class AssignmentBatch(Base):
+    __tablename__ = "assignments_batches"
+
+    id = Column(Integer, primary_key=True, index=True)
+    # 外键，关联到 assignments 表
+    assignment_id = Column(Integer, ForeignKey("assignments.id", ondelete="CASCADE"), nullable=False)
+    # 原始图片路径
+    original_image_path = Column(String(500), nullable=False)
+    # 识别出的代码
+    extracted_code = Column(Text)
+    # 时间戳
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    # 处理状态（可自定义）
+    status = Column(String(50), default='pending')
+
+    # 关系：归属于一个作业，行为上是“强绑定与级联”关系：通过 relationship 和 cascade="all, delete-orphan"
+    assignment = relationship("Assignment", back_populates="batches")
+
 
 class Task(Base):
     __tablename__ = "tasks"

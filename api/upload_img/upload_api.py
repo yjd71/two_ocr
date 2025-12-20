@@ -11,7 +11,7 @@ import aiofiles
 from core.core_db.crud import user_crud, assignment_crud
 
 from core.core_db.schemas import AssignmentCreate, AssignmentBase
-from config import img_upload_dir
+import config
 
 from fastapi import Depends, APIRouter
 from sqlalchemy.orm import Session  # 导入 Session 类型
@@ -65,6 +65,8 @@ async def ocr_api(file: Optional[UploadFile] = File(None),
 
         # 生成唯一的assignment_path_id
         assignment_path_id = str(Path(fileName).stem)
+        # TODO: 待完成文件路径为：40_20251029092628_103_33.jpg，作业id加文图片名字
+        # safe_filename = f"{assignment.id}_{assignment_path_id}"
 
         # 提取文件扩展名（如 '.jpg' 或 '.cpp'）
         ext = Path(fileName).suffix
@@ -73,7 +75,7 @@ async def ocr_api(file: Optional[UploadFile] = File(None),
         safe_name = f"{assignment_path_id}{ext}"
 
         # 定义初始图片上传目录
-        upload_dir = Path(img_upload_dir)
+        upload_dir = Path(config.img_upload_dir)
         upload_dir.mkdir(exist_ok=True)
 
         # 构建文件保存路径

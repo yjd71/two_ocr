@@ -85,7 +85,7 @@ def deepseek_ocr(LOCAL_IMAGE_PATH):
 
 if __name__ == '__main__':
     # 本地图片路径
-    LOCAL_IMAGE_PATH = '../../Data/241042Y438/test1/IMG_20250928_220351.jpg'
+    LOCAL_IMAGE_PATH = '../../../Data/241042Y438/test1/IMG_20250928_220351.jpg'
 
     # 调用deepseek api
     text_content = deepseek_ocr(LOCAL_IMAGE_PATH)

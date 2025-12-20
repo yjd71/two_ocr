@@ -1,6 +1,10 @@
 import logging
+import time
 from pathlib import Path
+
 from src.DeepSeekOCR.deepseekOCR_1 import deepseek_ocr
+from src.DeepSeekOCR.deepseek_ocr_split import deepseek_ocr_split
+
 from datetime import datetime, timezone  # 导入 datetime 和 timezone
 from core.core_db.models import Assignment
 from common.res.response import success_response, validation_error_response, service_error_response
@@ -48,7 +52,9 @@ async def ocr_api(
         save_dir.mkdir(parents=True, exist_ok=True)
 
         # 3. 执行 OCR 识别
-        ocr_result = deepseek_ocr(str(original_path), './output')
+        # time.sleep(3)
+        # ocr_result = deepseek_ocr(str(original_path), './output')
+        ocr_result = deepseek_ocr_split(str(original_path), './output')  # 图片切片识别
 
         # 4. 准备更新时间
         # 使用 datetime.now() 获取当前时间，这与数据库的 DateTime 类型匹配。

@@ -16,12 +16,19 @@ from core.core_llm.init_deepseek_ocr import global_models
 
 
 def deepseek_ocr(image_file, output_path):
+
+    since = time.time()
+
     model, tokenizer = global_models.get_ocr_model()
 
 
     # 输出只有结果的格式
     # prompts = "<image>\n<|grounding|>Convert the document to markdown.Extract the code text only."
-    prompts = "<image>\n<|grounding|>Convert the document to markdown and Extract the complete code block as one unified text region and Return a single bounding box covering all the code. "
+    # prompt_text = "<image>\n<|grounding|>Convert the document to markdown and Transcribe the code verbatim according to the Markdown format, preserving line breaks and disabling autocomplete and Do NOT correct."
+
+    # 2. 组装最终 Prompt (移除 <|grounding|>)
+    # prompts = f"<image>\n<|grounding|>User: {prompt_text}\n\nAssistant:"
+    prompts = "<image>\n<|grounding|>Extract the code text from the image."
 
     """
         Gundam:动态调整模型大小，当运行程序的时候，程序占用内存过大，模型动态调整大小，调成小模型，效果不会
@@ -39,9 +46,12 @@ def deepseek_ocr(image_file, output_path):
                       crop_mode=False,
                       test_compress=False
                       )
+    final = time.time() - since
 
-    # 匹配并移除第一每一行的特殊标记
-    cleaned_res = re.sub(r'^<\|ref\|>.*?<\|/det\|>\s*\n?', '', res, flags=re.MULTILINE)
+    print("deepseek-ocr识别最终时间: ", final)
+
+    # 匹配并移除每一行的特殊标记和空行
+    cleaned_res = '\n'.join(line for line in re.sub(r'<\|ref\|>.*?<\|/det\|>', '', res).splitlines() if line.strip())
     return cleaned_res
 
 if __name__ == '__main__':

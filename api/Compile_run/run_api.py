@@ -51,7 +51,7 @@ async def compile_run(assignmentId: int,
             返回：
               - dict: Wandbox 返回的 JSON（已解析）
         """
-        results = run_code_wandbox_api.compile_run(success_code, compiler="gcc-head", timeout=20)
+        results = run_code_wandbox_api.compile_run(success_code, compiler="gcc-head", timeout=100)
         if results is None:
             """ 更新状态 """
             assignment_crud.update_assignment(db, assignmentId, AssignmentUpdate(status="编译失败", processed_at=time.time()))

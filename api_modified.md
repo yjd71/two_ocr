@@ -70,7 +70,7 @@
 
 # 2. OCR 识别（OCR 接口：必须接收上传图片）
 
-- **方法 / 路径**：`POST /api/assignments/{assignmentId}/ocr`  
+- **方法 / 路径**：`POST /api/assignments/{assignmentId}/ocr（deepseek_ocr）`  
 - **用途**：对指定 `assignmentId` 的上传文件执行 OCR，返回识别到的源代码文本 `recognizedCode`。**此接口必须能够接收图片上传（multipart/form-data）或使用已上传 assignmentId 对应的文件进行 OCR。**
 
 ### 路径参数

@@ -20,19 +20,20 @@ def deepseek_ocr():
     model = model.eval().cuda().to(torch.bfloat16)
 
     # prompt = "<image>\nFree OCR. " 输出了带有检测框信息的markdown格式结果
-    # prompt = "<image>\n<|grounding|>Convert the document to markdown. "
+    # prompts = "<image>\n<|grounding|>Convert the document to markdown. "
 
     # 输出只有结果的格式
-    # prompts = "<image>\n<|grounding|>Convert the document to markdown.Fix format errors.Extract the code text only."
+    # prompts = "<image>\n<|grounding|>Convert the document to markdown.Extract the code text only."
 
     # 选项2 强调整体检测
-    # prompts = "<image>\n<|grounding|>Convert the document to markdown and Extract the complete code block as one unified text region and Return a single bounding box covering all the code"
-    prompt_text = "<image>\n<|grounding|>Convert the document to markdown Transcribe the code verbatim according to the Markdown format, preserving line breaks and disabling autocomplete.Do NOT auto-complete or correct syntax errors."
+    # prompts = "<image>\n<|grounding|>Convert the document to markdown and Extract the complete code block as one unified text region and Return a single bounding box covering all the code."
+    prompts = "<image>\n<|grounding|>Extract the code text from the image."
+    # prompt_text = "<image>\n<|grounding|>Convert the document to markdown and Transcribe the code verbatim according to the Markdown format and disabling autocomplete and Do NOT correct."
     # 2. 组装最终 Prompt (移除 <|grounding|>)
-    prompts = f"<image>\n<|grounding|>User: {prompt_text}\n\nAssistant:"
+    # prompts = f"<image>\n<|grounding|>User: {prompts}\n\nAssistant:"
 
     # image_file = r'C:\IT\AI\OCR\two_ocr\Data\241042Y405\test1\IMG_20250928_220327.jpg'
-    # image_file = '../../Data/zhangqikui/test1/IMG_20250928_222538.jpg'
+    image_file = '../../Data/zhangqikui/test1/IMG_20250928_222538.jpg'
     # image_file = r'./8f79568af86c7fc3ff903f25fccde4ef.jpg' #漏检
     # image_file = r'./92e918d2af7ec92779a03c2c1b105465.jpg'
     # image_file = r'./68749e9f7995681ba856a5abfb447ec8.jpg'  # 中间会有坐标信息
@@ -50,9 +51,14 @@ def deepseek_ocr():
 
     # image_file = r'C:\IT\AI\OCR\two_ocr\Data\2410450131\test1\IMG_20250928_220237.jpg'  # 识别乱码，代码写在左右，而且很多
     # image_file = r'C:\IT\AI\OCR\two_ocr\src\PaddleOCR\pro\1.png'  # 识别乱码的预处理图片
-    image_file = r'C:\IT\AI\OCR\two_ocr\Data\2410450238\test1\IMG_20250928_213227.jpg'  # 识别乱码，代码写在左右，而且很多
+    # image_file = r'C:\IT\AI\OCR\two_ocr\Data\2410450238\test1\IMG_20250928_213227.jpg'  # 识别乱码，代码写在左右，而且很多
 
     # image_file = r'C:\IT\AI\OCR\two_ocr\src\DeepSeekOCR\cdb0fbcb986a47f7bf4302b51437f887.jpg'# 多图拼接
+    # image_file = r'C:\IT\AI\OCR\two_ocr\uploads\original_image\57_b0d7a28b9198f71ca5a946d337748e24.jpg' # 内容很少，但是输出都在一行
+    image_file = r'C:\IT\AI\OCR\two_ocr\src\DeepSeekOCR\20251211195955_39_62.jpg'# 1/5图
+
+    image_file = r'C:\Users\UserY\OneDrive\图片\data\e1ec55f0215e273947bb5a588bf511af.jpg'
+
 
 
     output_path = './output'
@@ -69,15 +75,15 @@ def deepseek_ocr():
                       prompt=prompts,
                       image_file=image_file,
                       output_path=output_path,
-                      # save_results=True,
-                      save_results=False,
-                      eval_mode=True,
+                      save_results=True,
+                      # save_results=False,
+                      # eval_mode=True,
                       # output_path=None,  # 不设置输出路径
                       # save_results=False,  # 不保存结果 ， 可获取返回值
                       base_size=1280,
                       image_size=1280,
                       crop_mode=False,
-                      test_compress=False,
+                      test_compress=True,
                       )
 
     final = time.time() - since
