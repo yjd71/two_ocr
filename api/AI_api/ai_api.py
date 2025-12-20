@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session  # 导入 SQLAlchemy 的 Session，用于数�
 from common.res.response import success_response, validation_error_response, service_error_response
 from core.core_db.database import get_db  # 导入获取数据库 Session 的依赖函数
 from core.core_db.models import Assignment, Score, ImageProcess  # 导入 ORM 模型
-from src.AI_report import ai_run_reult_no_jsonDecoder
+from src.AI_report import ai_run_result_
 
 # 设置日志
 logger = logging.getLogger(__name__)

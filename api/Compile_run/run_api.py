@@ -1,7 +1,9 @@
 import time
 import logging
-
-from core.core_db.crud import assignment_crud, image_process_crud
+from datetime import datetime, timezone
+# [Modified] Removed crud imports, added Model imports for direct DB access
+# from core.core_db.crud import assignment_crud, image_process_crud
+from core.core_db.models import Assignment, ImageProcess  # Assuming models are defined here
 from core.core_db.schemas import ImageProcessCreate, ImageProcessUpdate, AssignmentUpdate
 from src.Compile_run import run_code_wandbox_api
 from common.res.response import success_response, validation_error_response, service_error_response, ApiResponse
@@ -37,7 +39,10 @@ async def compile_run(assignmentId: int,
         """ 根据作业ID，查询数据库的作业的识别代码 assignment.extracted_code  """
         """ 根据作业ID，查询数据库的作业地址，获取作业图片 （where file_path == original_image_path） """
         """ 先根据file_path查询数据库中是否存在该图片，（where file_path == original_image_path） """
-        assignment = assignment_crud.get_assignment(db, assignmentId)
+
+        # [Modified] Use direct DB query instead of crud.get_assignment
+        assignment = db.query(Assignment).filter(Assignment.id == assignmentId).first()
+
         if assignment is None:
             return validation_error_response(message="未找到对应的作业图片")
 
@@ -51,10 +56,16 @@ async def compile_run(assignmentId: int,
             返回：
               - dict: Wandbox 返回的 JSON（已解析）
         """
+        current_timestamp = datetime.now(timezone.utc)
         results = run_code_wandbox_api.compile_run(success_code, compiler="gcc-head", timeout=100)
         if results is None:
             """ 更新状态 """
-            assignment_crud.update_assignment(db, assignmentId, AssignmentUpdate(status="编译失败", processed_at=time.time()))
+            # [Modified] Update assignment status directly
+            assignment.status = "编译失败"
+            assignment.processed_at = current_timestamp
+            db.commit()
+            db.refresh(assignment)
+
             return service_error_response(message="代码编译运行失败")
 
         """
@@ -64,29 +75,39 @@ async def compile_run(assignmentId: int,
         # results_data = results_data["data"]
 
         """ 编译运行结果的入库 （根据uri传递的请求参数 作业ID 查询数据库，如果该作业存在，则更新作业，否则创建新作业）"""
-        image_process = image_process_crud.get_image_process_by_assignment_id(db, assignmentId)
+
+        # [Modified] Query ImageProcess directly
+        image_process = db.query(ImageProcess).filter(ImageProcess.assignment_id == assignmentId).first()
+
         if image_process is None:
             """ 存储编译结果到数据库中 """
-            image_process_data = ImageProcessCreate(
+            # [Modified] Create new ImageProcess object and add to DB
+            new_image_process = ImageProcess(
                 assignment_id=assignmentId,
                 process_step="compile_run",
                 confidence_score=results_data["score"],
                 process_result=results,
-                processed_at=time.time()
+                processed_at= current_timestamp
             )
-            image_process_crud.create_image_process(db, image_process_data)
+            db.add(new_image_process)
+            db.commit()
+            db.refresh(new_image_process)
         else:
             """ 查询数据库，该作业的编译结果存在，则更新编译结果 """
-            image_process_update_data = ImageProcessUpdate(
-                confidence_score=float(results_data["score"]),
-                process_result=results,
-                processed_at=time.time()
-            )
-            image_process_crud.update_image_process(db, assignmentId, image_process_update_data)
+            # [Modified] Update existing ImageProcess object
+            image_process.confidence_score = float(results_data["score"])
+            image_process.process_result = results
+            image_process.processed_at = current_timestamp
+
+            db.commit()
+            db.refresh(image_process)
 
         """ 更新状态 """
-        assignment_crud.update_assignment(db, assignmentId,
-                                          AssignmentUpdate(status="编译成功", processed_at=time.time()))
+        # [Modified] Update assignment status directly
+        assignment.status = "编译成功"
+        assignment.processed_at = current_timestamp
+        db.commit()
+        db.refresh(assignment)
 
         """ 响应, OCR 识别到的源代码文本 """
         # 返回成功响应

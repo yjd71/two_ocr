@@ -131,19 +131,24 @@ class KimiCppScorer:
                             """
         return prompt
 
-    def _parse_run_result(self, run_result: str) -> Dict[str, Any]:
+    def _parse_run_result(self, run_result) -> Dict[str, Any]:
         """
         解析运行结果，提取关键信息
 
         Args:
-            run_result: 运行结果字符串
+            run_result: 运行结果，可以是字符串或字典（从jsonb字段读取时）
 
         Returns:
             包含解析后信息的字典
         """
         try:
-            # 尝试解析JSON格式的运行结果
-            result_data = json.loads(run_result)
+            # 如果已经是字典类型（从数据库jsonb字段读取），直接使用
+            if isinstance(run_result, dict):
+                result_data = run_result
+            else:
+                # 如果是字符串，尝试解析JSON
+                result_data = json.loads(run_result)
+
             return {
                 "compile_success": result_data.get("compileSuccess", False),
                 "has_error": bool(result_data.get("error")),
@@ -151,24 +156,36 @@ class KimiCppScorer:
                 "output": result_data.get("output"),
                 "score": result_data.get("score", 0)
             }
-        except:
-            # 如果不是JSON格式，返回原始字符串
-            return {
-                "compile_success": "error" not in run_result.lower(),
-                "has_error": "error" in run_result.lower(),
-                "error_message": run_result,
-                "output": run_result,
-                "score": 0
-            }
+        except Exception as e:
+            # 如果解析失败，尝试作为普通字符串处理
+            logger.warning(f"解析运行结果失败: {e}, 尝试作为字符串处理")
+            if isinstance(run_result, str):
+                return {
+                    "compile_success": "error" not in run_result.lower(),
+                    "has_error": "error" in run_result.lower(),
+                    "error_message": run_result,
+                    "output": run_result,
+                    "score": 0
+                }
+            else:
+                # 如果既不是字典也不是字符串，返回默认值
+                logger.error(f"无法解析运行结果，类型: {type(run_result)}")
+                return {
+                    "compile_success": False,
+                    "has_error": True,
+                    "error_message": str(run_result),
+                    "output": None,
+                    "score": 0
+                }
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
-    def score_cpp_code(self, code: str, run_result: str, requirements: str) -> Dict[str, Any]:
+    def score_cpp_code(self, code: str, run_result, requirements: str) -> Dict[str, Any]:
         """
         使用KIMI API对C++代码进行评分
 
         Args:
             code: 需要评分的C++代码
-            run_result: 代码运行结果
+            run_result: 代码运行结果，可以是字符串或字典（从jsonb字段读取时）
             requirements: 作业要求描述
 
         Returns:

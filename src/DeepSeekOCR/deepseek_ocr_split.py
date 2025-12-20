@@ -5,6 +5,7 @@ from transformers import AutoModel, AutoTokenizer
 import torch
 import os
 
+from core.core_llm.init_deepseek_ocr import global_models
 from src.DeepSeekOCR.utils.clean_hard_end_result import clean_ocr_edges_only
 from src.DeepSeekOCR.utils.smart_merge import smart_merge
 from src.DeepSeekOCR.utils.split_image_vertically import split_image_vertically
@@ -13,16 +14,16 @@ from src.DeepSeekOCR.utils.split_image_vertically import split_image_vertically
 def deepseek_ocr_split(image_file, output_path):
     since = time.time()
 
-    os.environ["CUDA_VISIBLE_DEVICES"] = '0'
-    model_name = 'C:/IT/AI/OCR/huggingface_deepseek_ocr_model/DeepSeek-OCR'
-    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-    model = AutoModel.from_pretrained(model_name,
-                                      trust_remote_code=True,
-                                      use_safetensors=True,
-                                      )
-    model = model.eval().cuda().to(torch.bfloat16)
+    # os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+    # model_name = 'C:/IT/AI/OCR/huggingface_deepseek_ocr_model/DeepSeek-OCR'
+    # tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+    # model = AutoModel.from_pretrained(model_name,
+    #                                   trust_remote_code=True,
+    #                                   use_safetensors=True,
+    #                                   )
+    # model = model.eval().cuda().to(torch.bfloat16)
     """接口调用注释以上代码，打开下面的调用全局的model和tokenizer"""
-    # model, tokenizer = global_models.get_ocr_model()
+    model, tokenizer = global_models.get_ocr_model()
 
     prompt_text = "<image>\n<|grounding|>Convert the document to markdown and Transcribe the code verbatim according to the Markdown format and disabling autocomplete and Do NOT correct"
     # 2. 组装最终 Prompt (移除 <|grounding|>)
