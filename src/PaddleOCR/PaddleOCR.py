@@ -8,6 +8,9 @@ from paddleocr import PaddleOCR
 import sys
 import os
 
+from src.PaddleOCR.utils.load_img import load_img
+from src.PaddleOCR.utils.preprocess_img import preprocess_img_pro
+
 # 设置控制台编码为 UTF-8
 if os.name == 'nt':
     import msvcrt
@@ -18,40 +21,6 @@ if os.name == 'nt':
 # 关闭PaddleOCR的DEBUG日志
 logger = logging.getLogger('ppocr')
 logger.setLevel(logging.INFO)  # 设置INFO级别（可选：WARNING/ERROR）
-
-
-# 加载图片
-def load_img(img_path):
-    img = cv2.imread(img_path)
-    if img is None:
-        raise ValueError("Image not loaded correctly")
-    return img
-
-
-# 图片预处理
-def preprocess_img_pro(image):
-    # 转化为灰度图
-    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    # 对灰度图进行高斯模糊，去除图片中的噪声
-    blurred = cv2.GaussianBlur(gray_image, (7, 7), 0)
-
-    # 轻度高斯平滑，降噪减弱孤立噪点
-    H, W = image.shape[:2]
-    base = max(1, int(round(min(H, W) / 256.0)))  # 自适应尺度
-    g = cv2.GaussianBlur(blurred, (2 * base + 1, 2 * base + 1), 0)
-
-    # 自适应阈值处理以改善文字识别（二值化）
-    binary_img = cv2.adaptiveThreshold(g, 255,
-                                       cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                       cv2.THRESH_BINARY, 11, 2)
-    # _, binary_img = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU,)  # 二值化处理
-    # 形态学操作：开运算去除噪声
-    kernel = np.ones((3, 3), np.uint8)
-    opening = cv2.morphologyEx(binary_img, cv2.MORPH_OPEN, kernel)
-    # back to BGR uint8
-    preprocessed = cv2.cvtColor(opening, cv2.COLOR_GRAY2BGR)
-
-    return preprocessed
 
 
 # 使用PaddleOCR识别
@@ -90,17 +59,17 @@ def paddle_ocr(image, preprocessed_image_save_path=None):
     # 图片预处理
     preprocessed_image = preprocess_img_pro(original_image)
 
-    # 构建文件保存
-    preprocessed_image_save = Image.fromarray(preprocessed_image)  # 转换为 PIL 图像
-    preprocessed_image_save.save(preprocessed_image_save_path)
+    # # 构建文件保存
+    # preprocessed_image_save = Image.fromarray(preprocessed_image)  # 转换为 PIL 图像
+    # preprocessed_image_save.save(preprocessed_image_save_path)
 
     # 使用PaddleOCR识别
-    # result = ocr_recognition(original_image)
-    # return result
+    result = ocr_recognition(preprocessed_image)
+    return result
 
 
 if __name__ == '__main__':
-    image = r'C:\IT\AI\OCR\two_ocr\Data\2410450131\test1\IMG_20250928_220237.jpg'
+    image = r'C:\IT\AI\OCR\two_ocr\src\DeepSeekOCR\img\e1ec55f0215e273947bb5a588bf511af.jpg'
     image_id = './img_1.png'
     # image = 'img.png'
     # 使用PaddleOCR识别

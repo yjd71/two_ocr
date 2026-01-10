@@ -1,6 +1,7 @@
 import os
 import math
 from typing import Optional, List
+from pathlib import Path
 from sqlalchemy import desc, asc
 import logging
 from common.res.response import success_response, validation_error_response, service_error_response
@@ -8,6 +9,7 @@ from common.res.response import success_response, validation_error_response, ser
 from fastapi import Depends, APIRouter, Query
 from sqlalchemy.orm import Session  # 导入 Session 类型
 from core.core_db.database import get_db
+import config
 
 # 模型定义在 core.core_db.models
 from core.core_db.models import Assignment, Score, ImageProcess
@@ -132,6 +134,15 @@ async def get_assignment_list_api(
             filename = os.path.basename(
                 assignment_obj.original_image_path) if assignment_obj.original_image_path else "unknown"
 
+            # 生成图片 URL 路径
+            # 参考 upload_batch_api.py 的 URL 生成逻辑
+            url_path = ""
+            if assignment_obj.original_image_path:
+                # 从配置中提取文件夹名称 "original_image"
+                sub_dir_name = Path(config.img_upload_dir).name
+                # 拼接 URL: /uploads/original_image/文件名
+                url_path = f"/uploads/{sub_dir_name}/{filename}"
+
             # 处理分数类型 (Decimal -> float/int)
             final_score = float(score_val) if score_val is not None else None
             if final_score is not None and final_score.is_integer():
@@ -140,6 +151,7 @@ async def get_assignment_list_api(
             assignments_data.append({
                 "assignmentId": assignment_obj.id,
                 "fileName": filename,
+                "url": url_path,
                 "status": status,
                 "score": final_score,
                 "createdAt": str(assignment_obj.uploaded_at),

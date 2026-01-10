@@ -8,3 +8,4 @@ paddleocr
 logs/*
 uploads/*
 output/*
+temp_slices/*

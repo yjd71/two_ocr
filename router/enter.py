@@ -10,6 +10,12 @@ from api.assignments.get_assignments import router as get_assignments_router
 from api.assignments.get_list_assignments import router as get_list_assignments_router
 from api.assignments.delete_list_assignments import router as delete_list_assignments_router
 
+from api.upload_img.upload_batch_api import router as upload_batch_router
+from api.ocr_api.deepseek_ocr_batch import router as deepseek_ocr_batch_router
+from api.ocr_api.ocr_batch import router as ocr_batch_router
+
+
+
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -34,14 +40,22 @@ def router():
     # 包含路由模块
     #  上传路由
     app.include_router(upload_router)
+    #  批量上传路由
+    app.include_router(upload_batch_router)
+
     #  ocr路由
     app.include_router(ocr_router)
+    #  批量ocr路由
+    app.include_router(ocr_batch_router)
+
     #  编译运行路由
     app.include_router(compile_run_router)
     #  ai报告路由
     app.include_router(ai_router)
     #  deepseek-ocr路由
     app.include_router(deepseek_ocr_router)
+    #  批量deepseek-ocr路由
+    app.include_router(deepseek_ocr_batch_router)
 
     #  获取单个作业路由
     app.include_router(get_assignments_router)
@@ -51,5 +65,8 @@ def router():
     # app.include_router(get_assignments_router)
     # #  批量删除作业路由
     app.include_router(delete_list_assignments_router)
+
+
+
 
     return app

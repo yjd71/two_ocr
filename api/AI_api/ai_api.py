@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session  # 导入 SQLAlchemy 的 Session，用于数�
 from common.res.response import success_response, validation_error_response, service_error_response
 from core.core_db.database import get_db  # 导入获取数据库 Session 的依赖函数
 from core.core_db.models import Assignment, Score, ImageProcess  # 导入 ORM 模型
-from src.AI_report import ai_run_reult_no_jsonDecoder
+from src.AI_report import ai_run_result_
 
 # 设置日志
 logger = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ async def generate_ai_report(
         logger.info(f"开始调用AI服务，AssignmentID: {assignment_id}")
 
         # 调用外部 AI 模块进行分析
-        ai_result = ai_run_reult_no_jsonDecoder.ai(
+        ai_result = ai_run_result_.ai(
             perfect_code=assignment.extracted_code,
             run_result=compile_result_data
         )
@@ -87,8 +87,9 @@ async def generate_ai_report(
         try:
             ai_score_val = float(ai_result["score"])
 
-            # 计算加权总分
-            final_score = (rule_score * WEIGHT_RULE) + (ai_score_val * WEIGHT_AI)
+            # TODO: 计算加权总分，由于 OCR 识别效果不佳，导致基本上运行失败，所以总分暂时不加上rule_score
+            # final_score = (rule_score * WEIGHT_RULE) + (ai_score_val * WEIGHT_AI)
+            final_score = ai_score_val
             final_score = round(final_score, 1)
 
             # 提取 AI 结果中的详情和建议
